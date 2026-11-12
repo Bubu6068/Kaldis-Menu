@@ -26,20 +26,27 @@ class MenuController
         }
 
         // Branch from query string or session
-        $rawBranch = Request::str('branch');
-        $branchRepo = new BranchRepository();
-        $branch = null;
+        $changeBranch = Request::int('change_branch') === 1 || Request::str('branch') === 'select';
+        $branchRepo   = new BranchRepository();
+        $branch       = null;
 
-        if ($rawBranch !== '') {
-            $branch = $branchRepo->resolveBranch($rawBranch);
-            $branchCode = $branch ? $branch['code'] : $rawBranch;
-            \App\Helpers\Session::set('current_branch_code', $branchCode);
+        if ($changeBranch) {
+            \App\Helpers\Session::remove('current_branch_code');
         } else {
-            $branchCode = (string)\App\Helpers\Session::get('current_branch_code', '');
-            if ($branchCode !== '') {
-                $branch = $branchRepo->resolveBranch($branchCode);
+            $rawBranch = Request::str('branch');
+            if ($rawBranch !== '') {
+                $branch = $branchRepo->resolveBranch($rawBranch);
+                $branchCode = $branch ? $branch['code'] : $rawBranch;
+                \App\Helpers\Session::set('current_branch_code', $branchCode);
+            } else {
+                $branchCode = (string)\App\Helpers\Session::get('current_branch_code', '');
+                if ($branchCode !== '') {
+                    $branch = $branchRepo->resolveBranch($branchCode);
+                }
             }
         }
+
+        $branches = $branchRepo->getActive();
 
         // Categories
         $categories = (new CategoryRepository())->getParentCategoriesWithChildren();
@@ -67,13 +74,15 @@ class MenuController
                . e($settings['menu_subtitle']['value'] ?? 'Digital Menu');
 
         View::render('menu/index', [
-            'title'      => $title,
-            'categories' => $categories,
-            'products'   => $products,
-            'branch'     => $branch,
-            'settings'   => $settings,
-            'showPrices' => $showPrices,
-            'search'     => $search,
+            'title'          => $title,
+            'categories'     => $categories,
+            'products'       => $products,
+            'branch'         => $branch,
+            'branches'       => $branches,
+            'settings'       => $settings,
+            'showPrices'     => $showPrices,
+            'search'         => $search,
+            'hideBaseHeader' => true,
         ], 'base');
     }
 

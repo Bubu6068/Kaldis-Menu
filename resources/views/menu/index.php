@@ -1,190 +1,381 @@
-<div class="container py-3 py-md-4">
-    <!-- Hero / Welcome Banner -->
-    <div class="hero-banner mb-4">
-        <div class="row align-items-center">
-            <div class="col-lg-8">
-                <span class="badge bg-gold-subtle text-gold-dark mb-2 px-3 py-1 rounded-pill fw-semibold">
-                    <i class="bi bi-stars me-1"></i> Authentic Ethiopian Coffee Experience
-                </span>
-                <h1 class="hero-title mb-2"><?= e($settings['menu_title']['value'] ?? 'Kaldis Coffee') ?></h1>
-                <p class="lead mb-0 text-white-50" style="font-size: 1rem;">
-                    <?= e($settings['menu_subtitle']['value'] ?? 'Freshly brewed single-origin beans, traditional delicacies, and light meals.') ?>
-                </p>
-                <?php if (!empty($branch)): ?>
-                    <div class="mt-3 d-inline-flex align-items-center gap-2 bg-white bg-opacity-10 px-3 py-1 rounded-pill small">
-                        <i class="bi bi-geo-alt-fill text-gold"></i>
-                        <span>Serving you at <strong><?= e($branch['name']) ?></strong></span>
+<?php
+/**
+ * Kaldis Coffee PLC — Digital Menu & Branch Selection
+ * Mode 1: Branch Selection (when no branch is selected) -> Matches Screenshot 1
+ * Mode 2: Category & Product Exploration (when branch is selected) -> Matches Screenshot 2
+ */
+
+$logoUrl = !empty($settings['custom_logo']['value']) && file_exists(BASE_PATH . '/public/' . ltrim($settings['custom_logo']['value'], '/'))
+    ? base_url($settings['custom_logo']['value'])
+    : null;
+
+// Map categories to curated food & drink photography matching Screenshot 2
+$categoryPhotos = [
+    'hot beverage'             => 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=700&auto=format&fit=crop',
+    'hot beverages'            => 'https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=700&auto=format&fit=crop',
+    'bottled beverage'         => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=700&auto=format&fit=crop',
+    'cold & iced beverages'    => 'https://images.unsplash.com/photo-1517701604599-bb29b565090c?q=80&w=700&auto=format&fit=crop',
+    'beverage'                 => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=700&auto=format&fit=crop',
+    'juice'                    => 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?q=80&w=700&auto=format&fit=crop',
+    'torta'                    => 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?q=80&w=700&auto=format&fit=crop',
+    'ice cream'                => 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?q=80&w=700&auto=format&fit=crop',
+    'fast food'                => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=700&auto=format&fit=crop',
+    'food'                     => 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=700&auto=format&fit=crop',
+    'milk'                     => 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?q=80&w=700&auto=format&fit=crop',
+    'dairy product'            => 'https://images.unsplash.com/photo-1517256064527-09c73fc73e38?q=80&w=700&auto=format&fit=crop',
+    'cake'                     => 'https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?q=80&w=700&auto=format&fit=crop',
+    'extra'                    => 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=700&auto=format&fit=crop',
+    'breakfast & light meals'  => 'https://images.unsplash.com/photo-1525351484163-7529414344d8?q=80&w=700&auto=format&fit=crop',
+    'pastry'                   => 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=700&auto=format&fit=crop',
+    'bakery & fresh pastries'  => 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?q=80&w=700&auto=format&fit=crop',
+    'coffee beans & retail goods' => 'https://images.unsplash.com/photo-1587734195503-904fca47e0e9?q=80&w=700&auto=format&fit=crop',
+    'packed coffee'            => 'https://images.unsplash.com/photo-1587734195503-904fca47e0e9?q=80&w=700&auto=format&fit=crop',
+    'traditional teas & infusions' => 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=700&auto=format&fit=crop',
+    'wine'                     => 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=700&auto=format&fit=crop',
+];
+
+// Calculate item count per category
+$categoryCounts = [];
+if (!empty($products['data'])) {
+    foreach ($products['data'] as $p) {
+        $pId = (int)($p['parent_category_id'] ?? 0);
+        $categoryCounts[$pId] = ($categoryCounts[$pId] ?? 0) + 1;
+    }
+}
+
+$currentParent = isset($_GET['parent']) ? (int)$_GET['parent'] : 0;
+$currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
+?>
+
+<?php if (empty($branch)): ?>
+    <!-- ====================================================================
+         SCREENSHOT 1: BRANCH SELECTION VIEW ("SELECT YOUR NEAREST BRANCH")
+         ==================================================================== -->
+    <div class="branch-selection-wrapper">
+        <!-- Hero Section -->
+        <section class="branch-hero text-center">
+            <div class="container" style="max-width: 820px;">
+                <?php if ($logoUrl): ?>
+                    <div class="branch-hero-logo shadow-sm mb-3">
+                        <img src="<?= $logoUrl ?>" alt="Kaldis Coffee Logo" class="branch-hero-logo-img">
+                    </div>
+                <?php else: ?>
+                    <div class="brand-crest mx-auto mb-3 shadow" style="width: 58px; height: 58px;">
+                        <i class="bi bi-cup-hot-fill text-gold fs-3"></i>
                     </div>
                 <?php endif; ?>
-            </div>
-        </div>
-    </div>
 
-    <!-- Search Bar -->
-    <div class="row justify-content-center mb-4">
-        <div class="col-md-8 col-lg-6">
-            <div class="search-wrapper position-relative">
-                <i class="bi bi-search search-icon"></i>
-                <input 
-                    type="search" 
-                    id="menuSearchInput" 
-                    class="form-control search-input" 
-                    placeholder="Search menu (e.g. Macchiato, Croissant, Club Sandwich)..."
-                    value="<?= e($search ?? '') ?>"
-                    autocomplete="off"
-                >
-                <button type="button" id="searchClearBtn" class="btn btn-sm text-muted position-absolute end-0 top-50 translate-middle-y me-2" style="display: <?= !empty($search) ? 'block' : 'none' ?>;">
-                    <i class="bi bi-x-circle-fill"></i>
+                <h1 class="branch-hero-title mb-1"><?= e($settings['menu_title']['value'] ?? 'Kaldis Coffee') ?></h1>
+                <div class="branch-hero-subtitle mb-4">SELECT YOUR NEAREST BRANCH</div>
+
+                <!-- Live Branch Search Input -->
+                <div class="branch-search-box position-relative">
+                    <i class="bi bi-search branch-search-icon"></i>
+                    <input 
+                        type="search" 
+                        id="branchSearchInput" 
+                        class="form-control branch-search-input" 
+                        placeholder="Search branches or locations..."
+                        autocomplete="off"
+                    >
+                    <button type="button" id="branchSearchClear" class="btn btn-sm text-white-50 position-absolute end-0 top-50 translate-middle-y me-2" style="display: none;">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Branch Grid Section -->
+        <section class="container py-4 py-md-5">
+            <div class="row g-3 g-md-4" id="branchesGrid">
+                <?php if (!empty($branches)): ?>
+                    <?php foreach ($branches as $b): ?>
+                        <?php 
+                            $isAirport = str_contains(strtolower($b['code']), 'airport') || str_contains(strtolower($b['name']), 'airport');
+                            $pricingLabel = $isAirport ? 'USD PRICING' : 'STANDARD PRICING';
+                        ?>
+                        <div class="col-12 col-md-6 col-lg-4 branch-card-col" 
+                             data-name="<?= e(strtolower($b['name'])) ?>" 
+                             data-address="<?= e(strtolower($b['address'] ?? '')) ?>">
+                            <a href="<?= base_url('menu?branch=' . urlencode($b['code'])) ?>" class="branch-card d-flex flex-column h-100 text-decoration-none">
+                                <!-- Watermark paper plane/cursor icon -->
+                                <div class="branch-watermark">
+                                    <i class="bi bi-cursor-fill"></i>
+                                </div>
+
+                                <div class="branch-card-header d-flex align-items-start gap-3">
+                                    <div class="branch-icon-crest">
+                                        <i class="bi bi-cup-hot text-gold"></i>
+                                    </div>
+                                    <div class="branch-card-info flex-grow-1">
+                                        <h5 class="branch-card-name"><?= e($b['name']) ?></h5>
+                                        <div class="branch-card-address">
+                                            <i class="bi bi-geo-alt-fill text-gold flex-shrink-0"></i>
+                                            <span class="text-truncate"><?= e($b['address'] ?? 'Official Branch') ?></span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="branch-card-footer mt-auto d-flex align-items-center justify-content-between pt-3">
+                                    <span class="branch-pricing-tag"><?= $pricingLabel ?></span>
+                                    <span class="branch-view-btn">
+                                        View Menu <i class="bi bi-arrow-right ms-1"></i>
+                                    </span>
+                                </div>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Empty State for Branch Search -->
+            <div id="branchEmptyState" class="text-center py-5 my-4" style="display: none;">
+                <div class="mb-3 text-gold fs-1"><i class="bi bi-geo-alt"></i></div>
+                <h4 class="fw-bold text-espresso">No Branches Found</h4>
+                <p class="text-muted small">We couldn't find a branch matching your search.</p>
+                <button type="button" class="btn btn-outline-gold rounded-pill px-4 btn-sm" id="resetBranchSearchBtn">
+                    View All Branches
                 </button>
             </div>
-        </div>
+        </section>
     </div>
 
-    <!-- Parent Category Horizontal Scroll Navigation -->
-    <div class="mb-3">
-        <div class="category-nav-scroll d-flex gap-2">
-            <?php
-            $currentParent = isset($_GET['parent']) ? (int)$_GET['parent'] : 0;
-            $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
-            $branchParam   = !empty($branch) ? '&branch=' . urlencode($branch['code']) : '';
-            ?>
-            <a href="<?= base_url('menu') . ($branchParam ? '?' . ltrim($branchParam, '&') : '') ?>" 
-               class="cat-pill <?= $currentParent === 0 ? 'active' : '' ?>">
-                <i class="bi bi-grid-fill"></i>
-                <span>All Items</span>
-                <span class="cat-badge"><?= count($products['data'] ?? []) ?></span>
-            </a>
-
-            <?php foreach ($categories as $cat): ?>
-                <?php if ((bool)$cat['is_visible']): ?>
-                    <a href="<?= base_url('menu?parent=' . $cat['id'] . $branchParam) ?>" 
-                       class="cat-pill <?= $currentParent === (int)$cat['id'] ? 'active' : '' ?>">
-                        <span><?= e($cat['name']) ?></span>
-                        <span class="cat-badge"><?= count($cat['children'] ?? []) ?></span>
-                    </a>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
-    <!-- Child Category Sub-filters (shown if current parent has children) -->
-    <?php if ($currentParent > 0): ?>
-        <?php 
-        $activeParentObj = null;
-        foreach ($categories as $cat) {
-            if ((int)$cat['id'] === $currentParent) {
-                $activeParentObj = $cat;
-                break;
-            }
-        }
-        ?>
-        <?php if ($activeParentObj && !empty($activeParentObj['children'])): ?>
-            <div class="d-flex flex-wrap gap-2 mb-4 p-2 bg-white rounded-3 border border-1">
-                <a href="<?= base_url('menu?parent=' . $currentParent . $branchParam) ?>" 
-                   class="subcat-pill <?= $currentChild === 0 ? 'active' : '' ?>">
-                    All in <?= e($activeParentObj['name']) ?>
-                </a>
-                <?php foreach ($activeParentObj['children'] as $ch): ?>
-                    <?php if ((bool)$ch['is_visible']): ?>
-                        <a href="<?= base_url('menu?parent=' . $currentParent . '&child=' . $ch['id'] . $branchParam) ?>" 
-                           class="subcat-pill <?= $currentChild === (int)$ch['id'] ? 'active' : '' ?>">
-                            <?= e($ch['name']) ?>
-                        </a>
-                    <?php endif; ?>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
-    <?php endif; ?>
-
-    <!-- Product Grid -->
-    <div class="row g-3 g-md-4" id="productGrid">
-        <?php if (!empty($products['data'])): ?>
-            <?php foreach ($products['data'] as $p): ?>
-                <div class="col-12 col-sm-6 col-lg-4 col-xl-3 product-card-col" 
-                     data-name="<?= e(strtolower($p['name'])) ?>"
-                     data-desc="<?= e(strtolower($p['local_description'] ?? '')) ?>"
-                     data-code="<?= e(strtolower($p['article_code'])) ?>"
-                     data-parent="<?= e(strtolower($p['parent_category_name'] ?? '')) ?>"
-                     data-child="<?= e(strtolower($p['child_category_name'] ?? '')) ?>">
-                    
-                    <div class="product-card">
-                        <!-- Image Container -->
-                        <div class="product-image-container">
-                            <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
-                                <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
-                            <?php else: ?>
-                                <i class="bi bi-cup-hot product-placeholder-icon"></i>
-                            <?php endif; ?>
-
-                            <div class="product-badge-overlay">
-                                <?php if (!empty($p['consignee_unit'])): ?>
-                                    <span class="badge bg-espresso bg-opacity-75 text-white extra-small px-2 py-1 rounded-pill">
-                                        <?= e($p['consignee_unit']) ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-
-                        <!-- Card Body -->
-                        <div class="product-card-body">
-                            <div class="product-category-breadcrumb">
-                                <?= e($p['parent_category_name'] ?? 'Menu') ?>
-                                <?php if (!empty($p['child_category_name'])): ?>
-                                    &middot; <?= e($p['child_category_name']) ?>
-                                <?php endif; ?>
-                            </div>
-
-                            <h3 class="product-title"><?= e($p['name']) ?></h3>
-
-                            <?php if (!empty($p['local_description'])): ?>
-                                <p class="product-description"><?= e($p['local_description']) ?></p>
-                            <?php else: ?>
-                                <p class="product-description text-muted fst-italic">Prepared fresh with premium ingredients.</p>
-                            <?php endif; ?>
-
-                            <?php
-                            $vatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
-                            $displayPrice = null;
-                            if ($p['price'] !== null && (float)$p['price'] > 0) {
-                                $displayPrice = (float)$p['price'];
-                            } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
-                                $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
-                            }
-                            ?>
-                            <div class="product-footer">
-                                <?php if ($showPrices && $displayPrice !== null): ?>
-                                    <div>
-                                        <span class="product-price"><?= number_format($displayPrice, 2) ?></span>
-                                        <span class="product-price-currency"><?= e($p['price_currency'] ?? 'ETB') ?></span>
-                                        <span class="text-muted extra-small d-block text-nowrap" style="font-size: 0.68rem;">incl. VAT</span>
-                                    </div>
-                                <?php else: ?>
-                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small fw-semibold">
-                                        <i class="bi bi-check-circle me-1"></i> Available
-                                    </span>
-                                <?php endif; ?>
-
-                                <span class="badge bg-light text-muted extra-small">
-                                    #<?= e($p['article_code']) ?>
-                                </span>
-                            </div>
+<?php else: ?>
+    <!-- ====================================================================
+         SCREENSHOT 2: EXPLORE MENU & CATEGORIES VIEW
+         ==================================================================== -->
+    <div class="menu-view-wrapper">
+        <!-- Hero Header -->
+        <section class="menu-hero">
+            <div class="container" style="max-width: 820px;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="menu-hero-left">
+                        <h1 class="menu-branch-title mb-1"><?= e($branch['name']) ?></h1>
+                        <div class="menu-branch-pill">
+                            <i class="bi bi-geo-alt-fill text-gold me-1"></i>
+                            <span class="branch-address-text"><?= e($branch['address'] ?? 'Official Branch') ?></span>
+                            <span class="mx-1 text-white-50">&bull;</span>
+                            <a href="<?= base_url('menu?change_branch=1') ?>" class="menu-change-link" title="Switch to another branch">
+                                CHANGE
+                            </a>
                         </div>
                     </div>
+
+                    <div class="menu-hero-right">
+                        <?php if ($logoUrl): ?>
+                            <a href="<?= base_url('menu?change_branch=1') ?>" title="Kaldis Coffee">
+                                <img src="<?= $logoUrl ?>" alt="Kaldis Logo" class="menu-header-logo-badge shadow-sm">
+                            </a>
+                        <?php else: ?>
+                            <div class="brand-crest" style="width: 48px; height: 48px;">
+                                <i class="bi bi-cup-hot-fill text-gold fs-4"></i>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
 
-    <!-- Empty State -->
-    <div id="menuEmptyState" class="text-center py-5 my-5" style="display: <?= empty($products['data']) ? 'block' : 'none' ?>;">
-        <div class="mb-3 text-muted" style="font-size: 3rem;">
-            <i class="bi bi-cup"></i>
+                <!-- Product Search Input -->
+                <div class="menu-search-box position-relative mt-2">
+                    <i class="bi bi-search menu-search-icon"></i>
+                    <input 
+                        type="search" 
+                        id="productSearchInput" 
+                        class="form-control menu-search-input" 
+                        placeholder="Search products..."
+                        value="<?= e($search ?? '') ?>"
+                        autocomplete="off"
+                    >
+                    <button type="button" id="productSearchClear" class="btn btn-sm text-white-50 position-absolute end-0 top-50 translate-middle-y me-2" style="display: <?= !empty($search) ? 'block' : 'none' ?>;">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Menu Body Container -->
+        <div class="container py-4" style="max-width: 820px;">
+            
+            <!-- Category Cards Grid ("Explore Menu") View -->
+            <div id="categoryCardsSection" style="display: <?= ($currentParent === 0 && empty($search)) ? 'block' : 'none' ?>;">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2">
+                    <div class="explore-header position-relative">
+                        <h3 class="explore-title mb-0">Explore Menu</h3>
+                        <div class="explore-gold-bar"></div>
+                    </div>
+                    <span class="explore-count">
+                        <?= count(array_filter($categories, fn($c) => (bool)$c['is_visible'])) ?> CATEGORIES
+                    </span>
+                </div>
+
+                <!-- 2-Column Responsive Photography Category Grid matching Screenshot 2 -->
+                <div class="row g-3">
+                    <?php foreach ($categories as $cat): ?>
+                        <?php 
+                            if (!(bool)$cat['is_visible']) continue;
+                            $catKey = strtolower(trim($cat['name']));
+                            $catPhoto = $categoryPhotos[$catKey] ?? 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=700&auto=format&fit=crop';
+                            $itemCount = $categoryCounts[(int)$cat['id']] ?? count($cat['children'] ?? []);
+                        ?>
+                        <div class="col-6">
+                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . (int)$cat['id']) ?>" 
+                               class="category-photo-card d-block position-relative"
+                               data-parent-id="<?= (int)$cat['id'] ?>">
+                                
+                                <img src="<?= $catPhoto ?>" alt="<?= e($cat['name']) ?>" class="cat-card-img" loading="lazy">
+                                <div class="cat-card-gradient"></div>
+
+                                <div class="cat-card-content d-flex flex-column justify-content-between p-3">
+                                    <div class="cat-card-badge-wrap">
+                                        <span class="cat-card-count-badge">
+                                            <?= $itemCount ?> <?= $itemCount === 1 ? 'ITEM' : 'ITEMS' ?>
+                                        </span>
+                                    </div>
+                                    <h4 class="cat-card-title mb-0"><?= e($cat['name']) ?></h4>
+                                </div>
+                            </a>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Product Items Section (Active when a category is chosen or searching) -->
+            <div id="productItemsSection" style="display: <?= ($currentParent > 0 || !empty($search)) ? 'block' : 'none' ?>;">
+                
+                <!-- Breadcrumbs & Category Bar -->
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code'])) ?>" class="btn btn-sm btn-outline-gold rounded-pill px-3" id="backToCategoriesBtn">
+                        <i class="bi bi-arrow-left me-1"></i> Explore Menu
+                    </a>
+
+                    <?php 
+                        $activeCatName = 'All Products';
+                        foreach ($categories as $cat) {
+                            if ((int)$cat['id'] === $currentParent) {
+                                $activeCatName = $cat['name'];
+                                break;
+                            }
+                        }
+                    ?>
+                    <div class="small text-muted fw-semibold">
+                        Showing in: <span class="text-espresso fw-bold"><?= e($activeCatName) ?></span>
+                    </div>
+                </div>
+
+                <!-- Child Sub-category Pills (if available) -->
+                <?php if ($currentParent > 0): ?>
+                    <?php 
+                        $activeParentObj = null;
+                        foreach ($categories as $cat) {
+                            if ((int)$cat['id'] === $currentParent) {
+                                $activeParentObj = $cat;
+                                break;
+                            }
+                        }
+                    ?>
+                    <?php if ($activeParentObj && !empty($activeParentObj['children'])): ?>
+                        <div class="d-flex flex-wrap gap-2 mb-3 p-2 bg-white rounded-3 border">
+                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . $currentParent) ?>" 
+                               class="subcat-pill <?= $currentChild === 0 ? 'active' : '' ?>">
+                                All <?= e($activeParentObj['name']) ?>
+                            </a>
+                            <?php foreach ($activeParentObj['children'] as $ch): ?>
+                                <?php if ((bool)$ch['is_visible']): ?>
+                                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . $currentParent . '&child=' . $ch['id']) ?>" 
+                                       class="subcat-pill <?= $currentChild === (int)$ch['id'] ? 'active' : '' ?>">
+                                        <?= e($ch['name']) ?>
+                                    </a>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+
+                <!-- Product Grid -->
+                <div class="row g-3" id="productGrid">
+                    <?php if (!empty($products['data'])): ?>
+                        <?php foreach ($products['data'] as $p): ?>
+                            <div class="col-12 col-sm-6 product-card-col" 
+                                 data-name="<?= e(strtolower($p['name'])) ?>"
+                                 data-desc="<?= e(strtolower($p['local_description'] ?? '')) ?>"
+                                 data-code="<?= e(strtolower($p['article_code'])) ?>"
+                                 data-parent-id="<?= (int)($p['parent_category_id'] ?? 0) ?>"
+                                 data-child-id="<?= (int)($p['child_category_id'] ?? 0) ?>">
+                                
+                                <div class="product-card">
+                                    <div class="product-image-container">
+                                        <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
+                                            <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
+                                        <?php else: ?>
+                                            <i class="bi bi-cup-hot product-placeholder-icon"></i>
+                                        <?php endif; ?>
+
+                                        <?php if (!empty($p['consignee_unit'])): ?>
+                                            <div class="product-badge-overlay">
+                                                <span class="badge extra-small px-2 py-1">
+                                                    <?= e($p['consignee_unit']) ?>
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="product-card-body">
+                                        <div class="product-category-breadcrumb">
+                                            <?= e($p['parent_category_name'] ?? 'Menu') ?>
+                                            <?php if (!empty($p['child_category_name'])): ?>
+                                                &middot; <?= e($p['child_category_name']) ?>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <h3 class="product-title"><?= e($p['name']) ?></h3>
+
+                                        <p class="product-description">
+                                            <?= !empty($p['local_description']) ? e($p['local_description']) : 'Freshly prepared with authentic Kaldis quality.' ?>
+                                        </p>
+
+                                        <?php
+                                        $vatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
+                                        $displayPrice = null;
+                                        if ($p['price'] !== null && (float)$p['price'] > 0) {
+                                            $displayPrice = (float)$p['price'];
+                                        } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
+                                            $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                        }
+                                        ?>
+                                        <div class="product-footer">
+                                            <?php if ($showPrices && $displayPrice !== null): ?>
+                                                <div>
+                                                    <span class="product-price"><?= number_format($displayPrice, 2) ?></span>
+                                                    <span class="product-price-currency"><?= e($p['price_currency'] ?? 'ETB') ?></span>
+                                                    <span class="text-muted extra-small d-block" style="font-size: 0.65rem;">incl. VAT</span>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small fw-semibold">
+                                                    <i class="bi bi-check-circle me-1"></i> Available
+                                                </span>
+                                            <?php endif; ?>
+
+                                            <span class="badge bg-light text-muted extra-small">
+                                                #<?= e($p['article_code']) ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Empty State for Products -->
+                <div id="menuEmptyState" class="text-center py-5 my-4" style="display: <?= empty($products['data']) ? 'block' : 'none' ?>;">
+                    <div class="mb-3 text-gold fs-1"><i class="bi bi-cup"></i></div>
+                    <h4 class="fw-bold text-espresso mb-1">No Menu Items Found</h4>
+                    <p class="text-muted small mb-3">No products matched your search or selected category.</p>
+                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code'])) ?>" class="btn btn-gold rounded-pill px-4 btn-sm">
+                        View All Categories
+                    </a>
+                </div>
+
+            </div>
         </div>
-        <h4 class="fw-bold text-espresso mb-2">No Menu Items Found</h4>
-        <p class="text-muted mb-4">We couldn't find any products matching your selection.</p>
-        <a href="<?= base_url('menu') . ($branchParam ? '?' . ltrim($branchParam, '&') : '') ?>" class="btn btn-gold rounded-pill px-4">
-            <i class="bi bi-arrow-left me-1"></i> View Full Menu
-        </a>
     </div>
-</div>
-
+<?php endif; ?>

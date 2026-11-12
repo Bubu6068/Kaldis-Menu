@@ -13,26 +13,27 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link href="<?= base_url('assets/css/style.css') ?>" rel="stylesheet">
+    <!-- Custom CSS (Cache-busted) -->
+    <link href="<?= asset_url('assets/css/style.css') ?>" rel="stylesheet">
 </head>
 <body class="kaldis-app">
-    <!-- Header / Brand Navigation -->
+    <?php 
+        if (empty($settings)) {
+            try {
+                $settings = (new \App\Repositories\SettingsRepository())->getAll();
+            } catch (\Throwable $e) {
+                $settings = [];
+            }
+        }
+        $customLogo = $settings['custom_logo']['value'] ?? ''; 
+        $hasCustomLogo = !empty($customLogo);
+    ?>
+    <!-- Header / Brand Navigation (Shown on non-menu pages or when requested) -->
+    <?php if (empty($hideBaseHeader)): ?>
     <header class="kaldis-header sticky-top">
         <div class="container py-2">
             <div class="d-flex align-items-center justify-content-between">
-                <a href="<?= base_url('menu') ?>" class="text-decoration-none d-flex align-items-center gap-2">
-                    <?php 
-                        if (empty($settings)) {
-                            try {
-                                $settings = (new \App\Repositories\SettingsRepository())->getAll();
-                            } catch (\Throwable $e) {
-                                $settings = [];
-                            }
-                        }
-                        $customLogo = $settings['custom_logo']['value'] ?? ''; 
-                        $hasCustomLogo = !empty($customLogo);
-                    ?>
+                <a href="<?= base_url('menu?change_branch=1') ?>" class="text-decoration-none d-flex align-items-center gap-2">
                     <?php if ($hasCustomLogo): ?>
                         <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-white" style="width: 44px; height: 44px; border: 2px solid #c69214; padding: 2px;">
                             <img src="<?= base_url($customLogo) ?>" alt="Kaldis Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
@@ -50,10 +51,11 @@
 
                 <div class="d-flex align-items-center gap-2">
                     <?php if (!empty($branch)): ?>
-                        <div class="badge bg-gold-subtle text-gold-dark d-flex align-items-center gap-1 px-3 py-2 rounded-pill">
+                        <a href="<?= base_url('menu?change_branch=1') ?>" class="badge bg-gold-subtle text-gold-dark d-flex align-items-center gap-1 px-3 py-2 rounded-pill text-decoration-none" title="Change Branch">
                             <i class="bi bi-geo-alt-fill"></i>
                             <span class="fw-semibold"><?= e($branch['name']) ?></span>
-                        </div>
+                            <i class="bi bi-arrow-repeat ms-1 extra-small"></i>
+                        </a>
                     <?php endif; ?>
                     <a href="<?= base_url('feedback' . (!empty($branch) ? '?branch=' . urlencode($branch['code']) : '')) ?>" class="btn btn-outline-gold btn-sm rounded-pill px-3" title="Rate Us & Feedback">
                         <i class="bi bi-chat-heart me-1"></i> Feedback
@@ -62,6 +64,7 @@
             </div>
         </div>
     </header>
+    <?php endif; ?>
 
     <!-- Main Content Area -->
     <main class="kaldis-main">
@@ -93,8 +96,8 @@
 
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Custom JS -->
-    <script src="<?= base_url('assets/js/menu.js') ?>"></script>
+    <!-- Custom JS (Cache-busted) -->
+    <script src="<?= asset_url('assets/js/menu.js') ?>"></script>
 </body>
 </html>
 
