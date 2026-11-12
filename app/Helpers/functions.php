@@ -9,11 +9,16 @@ use App\Helpers\Env;
 
 if (!function_exists('base_url')) {
     /**
-     * Build a full URL from a relative path, using APP_URL from .env.
+     * Build a full URL from a relative path, using APP_URL from .env with auto-detection fallback.
      */
     function base_url(string $path = ''): string
     {
-        $base = rtrim(Env::getString('APP_URL', 'http://localhost/kaldis-menu/public'), '/');
+        $base = rtrim(Env::getString('APP_URL', ''), '/');
+        if ($base === '' || ($base === 'http://localhost/kaldis-menu/public' && !empty($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== 'localhost')) {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $base = $scheme . '://' . $host;
+        }
         return $base . '/' . ltrim($path, '/');
     }
 }

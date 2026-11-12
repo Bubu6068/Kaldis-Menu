@@ -17,7 +17,7 @@ class Logger
     {
         self::$logDir = rtrim($logDir, '/\\') . DIRECTORY_SEPARATOR;
         if (!is_dir(self::$logDir)) {
-            mkdir(self::$logDir, 0750, true);
+            @mkdir(self::$logDir, 0755, true);
         }
     }
 

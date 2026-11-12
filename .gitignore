@@ -1,9 +1,6 @@
 # ---- Secrets ----
 .env
 
-# ---- Dependencies ----
-/vendor/
-
 # ---- Generated / Runtime ----
 /storage/logs/*.log
 /storage/cache/*
@@ -21,4 +18,5 @@ Thumbs.db
 
 # ---- Compiled ----
 *.phar
+
 
