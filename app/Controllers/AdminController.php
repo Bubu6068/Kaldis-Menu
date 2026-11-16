@@ -160,6 +160,7 @@ class AdminController
 
         $localDesc  = trim(Request::post('local_description', ''));
         $isVisible  = Request::post('is_visible') !== null ? 1 : 0;
+        $isPopup    = Request::post('is_popup') !== null ? 1 : 0;
         $priceRaw   = trim((string) Request::post('price', ''));
         $price      = null;
 
@@ -173,6 +174,7 @@ class AdminController
         $fields = [
             'local_description' => $localDesc !== '' ? $localDesc : null,
             'is_visible'        => $isVisible,
+            'is_popup'          => $isPopup,
             'price'             => $price,
         ];
 
@@ -232,6 +234,7 @@ class AdminController
         AuditLog::record('product_updated', 'product', (int) $id, [
             'name'       => $product['name'],
             'is_visible' => $isVisible,
+            'is_popup'   => $isPopup,
             'price'      => $price,
             'branch_overrides' => is_array($branchVisible) ? count($branchVisible) : 0,
         ]);

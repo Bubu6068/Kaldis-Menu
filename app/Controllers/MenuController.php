@@ -69,8 +69,10 @@ class MenuController
             $filters['child_category_id'] = $childFilter;
         }
 
-        $products   = (new ProductRepository())->findAll($filters, 1, 9999);
-        $showPrices = ($settings['show_prices']['value'] ?? '0') === '1';
+        $productRepo = new ProductRepository();
+        $products    = $productRepo->findAll($filters, 1, 9999);
+        $popupProduct = $productRepo->getPopupProduct(!empty($branch['id']) ? (int)$branch['id'] : null);
+        $showPrices  = ($settings['show_prices']['value'] ?? '0') === '1';
 
         $title = e($settings['menu_title']['value'] ?? 'Kaldis Coffee')
                . ' — '
@@ -80,6 +82,7 @@ class MenuController
             'title'          => $title,
             'categories'     => $categories,
             'products'       => $products,
+            'popupProduct'   => $popupProduct,
             'branch'         => $branch,
             'branches'       => $branches,
             'settings'       => $settings,

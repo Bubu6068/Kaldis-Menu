@@ -18,22 +18,44 @@
                         <div class="form-text extra-small">Original name from <code>article_import</code>. Cannot be edited directly here.</div>
                     </div>
 
-                    <!-- Menu Visibility -->
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input 
-                                class="form-check-input" 
-                                type="checkbox" 
-                                id="is_visible" 
-                                name="is_visible" 
-                                value="1" 
-                                <?= (bool)$product['is_visible'] ? 'checked' : '' ?>
-                            >
-                            <label class="form-check-label fw-semibold text-espresso" for="is_visible">
-                                Visible on Public Menu
-                            </label>
+                    <!-- Menu Visibility & QR Popup Settings -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 bg-light rounded-4 border h-100">
+                                <div class="form-check form-switch mb-1">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="checkbox" 
+                                        id="is_visible" 
+                                        name="is_visible" 
+                                        value="1" 
+                                        <?= (bool)$product['is_visible'] ? 'checked' : '' ?>
+                                    >
+                                    <label class="form-check-label fw-bold text-espresso" for="is_visible">
+                                        <i class="bi bi-eye-fill text-success me-1"></i> Visible on Public Menu
+                                    </label>
+                                </div>
+                                <div class="form-text extra-small mt-0">When disabled, this product is immediately hidden from customers across all branches.</div>
+                            </div>
                         </div>
-                        <div class="form-text extra-small">When disabled, this product is immediately hidden from customers across all branches.</div>
+                        <div class="col-md-6">
+                            <div class="p-3 rounded-4 border h-100" style="background: #fffdf5; border-color: rgba(197, 160, 89, 0.4) !important;">
+                                <div class="form-check form-switch mb-1">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="checkbox" 
+                                        id="is_popup" 
+                                        name="is_popup" 
+                                        value="1" 
+                                        <?= !empty($product['is_popup']) ? 'checked' : '' ?>
+                                    >
+                                    <label class="form-check-label fw-bold text-espresso" for="is_popup">
+                                        <i class="bi bi-megaphone-fill text-gold me-1"></i> Popup on QR Scan
+                                    </label>
+                                </div>
+                                <div class="form-text extra-small mt-0">When customer scans QR, this product pops up with the product name displayed at the top.</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Visible Menu By Branch -->

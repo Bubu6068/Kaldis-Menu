@@ -57,6 +57,14 @@ class ProductRepository
                         AND `default_value` REGEXP '^[0-9]+(\\.[0-9]+)?$'
                 ");
             }
+
+            $popupCol = $this->db->query("SHOW COLUMNS FROM `products` LIKE 'is_popup'")->fetchAll();
+            if (empty($popupCol)) {
+                $this->db->exec("
+                    ALTER TABLE `products`
+                      ADD COLUMN `is_popup` TINYINT(1) NOT NULL DEFAULT 0 AFTER `is_visible`
+                ");
+            }
         } catch (\Throwable $e) {
             // Silently fall through if database user lacks ALTER permission
         }
@@ -123,6 +131,7 @@ class ProductRepository
                 p.`local_description`,
                 p.`image_path`,
                 p.`is_visible`,
+                p.`is_popup`,
                 p.`price`,
                 p.`price_currency`,
                 p.`synced_at`,
@@ -226,7 +235,7 @@ class ProductRepository
      */
     public function updateAdminFields(int $id, array $fields): bool
     {
-        $allowed = ['local_description', 'image_path', 'is_visible', 'price'];
+        $allowed = ['local_description', 'image_path', 'is_visible', 'is_popup', 'price'];
         $setClauses = [];
         $params     = [':id' => $id, ':updated_at' => date('Y-m-d H:i:s')];
 
@@ -336,6 +345,52 @@ class ProductRepository
                 ':product_id'   => $productId,
                 ':is_available' => $isVisible ? 1 : 0,
             ]);
+        }
+    }
+
+    /**
+     * Retrieves the active product marked for QR scan popup.
+     *
+     * @param int|null $branchId Optional branch ID to check availability
+     * @return array<string, mixed>|null
+     */
+    public function getPopupProduct(?int $branchId = null): ?array
+    {
+        $branchJoin = $branchId !== null
+            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :branch_id)'
+            : '';
+        $branchCondition = $branchId !== null
+            ? 'AND (bp.`is_available` IS NULL OR bp.`is_available` = 1)'
+            : '';
+
+        $sql = "
+            SELECT
+                p.*,
+                pc.`name` AS `parent_category_name`,
+                cc.`name` AS `child_category_name`
+            FROM `products` p
+            LEFT JOIN `parent_categories` pc ON pc.`id` = p.`parent_category_id`
+            LEFT JOIN `child_categories`  cc ON cc.`id` = p.`child_category_id`
+            {$branchJoin}
+            WHERE p.`is_popup` = 1
+              AND p.`is_visible` = 1
+              AND p.`is_active_source` = 1
+              {$branchCondition}
+            ORDER BY p.`updated_at` DESC
+            LIMIT 1
+        ";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            if ($branchId !== null) {
+                $stmt->bindValue(':branch_id', $branchId, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row !== false ? $row : null;
+        } catch (Throwable $e) {
+            Logger::error("ProductRepository::getPopupProduct failed: " . $e->getMessage());
+            return null;
         }
     }
 

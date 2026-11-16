@@ -191,4 +191,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    /* ==========================================================================
+       4. QR Scan Welcome Product Popup Modal
+       ========================================================================== */
+    const qrModalEl = document.getElementById('qrProductPopupModal');
+    if (qrModalEl) {
+        const prodId = qrModalEl.getAttribute('data-product-id') || 'default';
+        const sessionKey = 'kaldis_qr_popup_shown_' + prodId;
+
+        // Automatically show on arrival (once per session per product, or if forced via URL)
+        const urlParams = new URLSearchParams(window.location.search);
+        const forcePopup = urlParams.has('popup') || urlParams.has('scan') || urlParams.has('qr');
+
+        if (forcePopup || !sessionStorage.getItem(sessionKey)) {
+            setTimeout(() => {
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const qrModal = new bootstrap.Modal(qrModalEl);
+                    qrModal.show();
+                    sessionStorage.setItem(sessionKey, '1');
+                }
+            }, 350);
+        }
+    }
+
 });

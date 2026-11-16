@@ -464,3 +464,134 @@ foreach ($categories as $pCat) {
         </div>
     </div>
 <?php endif; ?>
+
+<?php if (!empty($popupProduct)): ?>
+    <?php
+    $pop = $popupProduct;
+    $popVatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
+    $popDisplayPrice = null;
+    $popPriceSuffix = 'ETB';
+    $popIsDollar = false;
+    $popShowVat = true;
+
+    $popCurrNameLower = !empty($branch['name']) ? strtolower(trim($branch['name'])) : '';
+    $popCurrCodeLower = !empty($branch['code']) ? strtolower(trim($branch['code'])) : '';
+    $popIsAirport = ($popCurrNameLower === 'airport' || $popCurrNameLower === 'airport 2' || str_starts_with($popCurrNameLower, 'airport') || in_array($popCurrCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
+    $popIsEca = ($popCurrNameLower === 'eca' || str_starts_with($popCurrNameLower, 'eca ') || in_array($popCurrCodeLower, ['43492', 'eca'], true));
+
+    if ($popIsAirport) {
+        $popIsDollar = true;
+        $popShowVat = true;
+        $popPriceSuffix = 'USD';
+        if (!empty($pop['airport_price']) && is_numeric($pop['airport_price']) && (float)$pop['airport_price'] > 0) {
+            $popDisplayPrice = round((float)$pop['airport_price'] * $popVatRate, 2);
+        } elseif ($pop['price'] !== null && (float)$pop['price'] > 0) {
+            $popDisplayPrice = (float)$pop['price'];
+        }
+    } elseif ($popIsEca) {
+        $popIsDollar = false;
+        $popPriceSuffix = 'ETB';
+        if (!empty($pop['eca_price']) && is_numeric($pop['eca_price']) && (float)$pop['eca_price'] > 0) {
+            $popDisplayPrice = (float)$pop['eca_price'];
+            $popShowVat = false;
+        } elseif ($pop['price'] !== null && (float)$pop['price'] > 0) {
+            $popDisplayPrice = (float)$pop['price'];
+            $popShowVat = true;
+        } elseif (!empty($pop['branches_price']) && is_numeric($pop['branches_price']) && (float)$pop['branches_price'] > 0) {
+            $popDisplayPrice = round((float)$pop['branches_price'] * $popVatRate, 2);
+            $popShowVat = true;
+        } elseif (!empty($pop['default_value']) && is_numeric($pop['default_value']) && (float)$pop['default_value'] > 0) {
+            $popDisplayPrice = round((float)$pop['default_value'] * $popVatRate, 2);
+            $popShowVat = true;
+        }
+    } else {
+        $popIsDollar = false;
+        $popPriceSuffix = e($pop['price_currency'] ?? 'ETB');
+        $popShowVat = true;
+        if ($pop['price'] !== null && (float)$pop['price'] > 0) {
+            $popDisplayPrice = (float)$pop['price'];
+        } elseif (!empty($pop['branches_price']) && is_numeric($pop['branches_price']) && (float)$pop['branches_price'] > 0) {
+            $popDisplayPrice = round((float)$pop['branches_price'] * $popVatRate, 2);
+        } elseif (!empty($pop['default_value']) && is_numeric($pop['default_value']) && (float)$pop['default_value'] > 0) {
+            $popDisplayPrice = round((float)$pop['default_value'] * $popVatRate, 2);
+        }
+    }
+
+    $popImg = !empty($pop['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($pop['image_path'], '/'))
+        ? base_url($pop['image_path'])
+        : null;
+    ?>
+    <!-- QR Scan Welcome Product Popup Modal -->
+    <div class="modal fade" id="qrProductPopupModal" tabindex="-1" aria-labelledby="qrProductPopupTitle" aria-hidden="true" data-product-id="<?= (int)$pop['id'] ?>">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden text-center position-relative">
+                <!-- Close Button -->
+                <button type="button" class="btn-close position-absolute top-0 end-0 m-3 z-3 bg-white p-2 rounded-circle shadow-sm" data-bs-dismiss="modal" aria-label="Close"></button>
+
+                <!-- TOP HEADER: Product Name prominently displayed at the top -->
+                <div class="pt-4 px-4 pb-2 bg-white">
+                    <span class="badge bg-gold-subtle text-gold-dark rounded-pill px-3 py-1 extra-small fw-bold text-uppercase tracking-wider mb-2 d-inline-flex align-items-center gap-1">
+                        <i class="bi bi-star-fill text-gold"></i> Featured Today
+                    </span>
+                    <h2 class="fw-bold text-espresso mb-1" id="qrProductPopupTitle" style="font-family: var(--font-serif, serif); font-size: 1.75rem; line-height: 1.25;">
+                        <?= e($pop['name']) ?>
+                    </h2>
+                    <?php if (!empty($pop['child_category_name']) || !empty($pop['parent_category_name'])): ?>
+                        <div class="text-muted extra-small">
+                            <?= e($pop['child_category_name'] ?? $pop['parent_category_name']) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Product Image or Food Visual -->
+                <?php if ($popImg): ?>
+                    <div class="position-relative mx-3 my-2 rounded-3 overflow-hidden shadow-sm" style="max-height: 230px; background: #fdfaf6;">
+                        <img src="<?= $popImg ?>" alt="<?= e($pop['name']) ?>" class="w-100 object-fit-cover" style="height: 210px;">
+                    </div>
+                <?php else: ?>
+                    <div class="mx-3 my-2 rounded-3 d-flex align-items-center justify-content-center text-gold shadow-sm" style="height: 160px; background: linear-gradient(135deg, #fdf8ee 0%, #faede0 100%);">
+                        <i class="bi bi-cup-hot display-3 opacity-75"></i>
+                    </div>
+                <?php endif; ?>
+
+                <!-- Modal Body: Description & Price -->
+                <div class="modal-body px-4 py-3">
+                    <?php if (!empty($pop['local_description'])): ?>
+                        <p class="text-secondary small mb-3" style="line-height: 1.5;">
+                            <?= nl2br(e($pop['local_description'])) ?>
+                        </p>
+                    <?php else: ?>
+                        <p class="text-secondary small mb-3" style="line-height: 1.5;">
+                            Handcrafted fresh to order with authentic Kaldis quality and premium ingredients.
+                        </p>
+                    <?php endif; ?>
+
+                    <?php if ($showPrices && $popDisplayPrice !== null): ?>
+                        <div class="my-2 p-2 rounded-3 bg-light d-inline-block px-4">
+                            <span class="extra-small text-muted d-block mb-1 text-uppercase fw-semibold">Price</span>
+                            <div class="d-flex align-items-baseline justify-content-center gap-1">
+                                <?php if ($popIsDollar): ?>
+                                    <span class="text-gold fw-bold fs-4">$</span>
+                                <?php endif; ?>
+                                <span class="fw-bold text-espresso fs-3" style="font-family: var(--font-serif, serif);">
+                                    <?= number_format($popDisplayPrice, 2) ?>
+                                </span>
+                                <span class="small fw-semibold text-muted"><?= $popPriceSuffix ?></span>
+                            </div>
+                            <?php if ($popShowVat): ?>
+                                <span class="extra-small text-muted d-block" style="font-size: 0.65rem;">inclusive of VAT</span>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Modal Footer: Action Button -->
+                <div class="modal-footer border-0 pt-0 pb-4 px-4 justify-content-center">
+                    <button type="button" class="btn btn-gold rounded-pill px-5 py-2 fw-bold shadow-sm" data-bs-dismiss="modal">
+                        Explore Full Menu <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
