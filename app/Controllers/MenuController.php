@@ -71,7 +71,6 @@ class MenuController
 
         $productRepo = new ProductRepository();
         $products    = $productRepo->findAll($filters, 1, 9999);
-        $popupProduct = $productRepo->getPopupProduct(!empty($branch['id']) ? (int)$branch['id'] : null);
         $showPrices  = ($settings['show_prices']['value'] ?? '0') === '1';
 
         // Load active or dynamic new product announcements
@@ -86,7 +85,6 @@ class MenuController
             'title'          => $title,
             'categories'     => $categories,
             'products'       => $products,
-            'popupProduct'   => $popupProduct,
             'announcements'  => $announcements,
             'branch'         => $branch,
             'branches'       => $branches,
