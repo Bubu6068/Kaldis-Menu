@@ -60,6 +60,7 @@
         <table class="table table-hover align-middle mb-0 small">
             <thead class="table-light">
                 <tr>
+                    <th style="width: 44px;">Img</th>
                     <th>Article Code</th>
                     <th>Product Name</th>
                     <th>Categories</th>
@@ -76,6 +77,15 @@
                 <?php if (!empty($products)): ?>
                     <?php foreach ($products as $p): ?>
                         <tr>
+                            <td>
+                                <div class="rounded-3 overflow-hidden bg-light d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
+                                        <img src="<?= base_url($p['image_path']) ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <?php else: ?>
+                                        <i class="bi bi-cup-hot text-muted"></i>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
                             <td>
                                 <code class="text-dark fw-semibold"><?= e($p['article_code']) ?></code>
                             </td>
@@ -165,7 +175,7 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" class="text-center py-5 text-muted">No products found matching your filter criteria.</td>
+                        <td colspan="11" class="text-center py-5 text-muted">No products found matching your filter criteria.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>

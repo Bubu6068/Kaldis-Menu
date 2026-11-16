@@ -142,6 +142,22 @@
                         <div class="form-text extra-small">This text is displayed on the customer product card.</div>
                     </div>
 
+                    <!-- Image Upload -->
+                    <div class="mb-4">
+                        <label for="image" class="form-label small fw-semibold text-espresso">Product Image</label>
+                        <?php if (!empty($product['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($product['image_path'], '/'))): ?>
+                            <div class="mb-2 d-flex align-items-center gap-3 p-2 border rounded-3 bg-light">
+                                <img src="<?= base_url($product['image_path']) ?>" alt="" style="width: 70px; height: 70px; object-fit: cover;" class="rounded-2">
+                                <div>
+                                    <div class="small fw-semibold text-espresso">Current Image</div>
+                                    <span class="text-muted extra-small">Upload a new file below to replace it.</span>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/jpeg,image/png,image/webp">
+                        <div class="form-text extra-small">Formats: JPG, PNG, WebP. Maximum size: <?= \App\Helpers\Env::getInt('UPLOAD_MAX_SIZE_MB', 5) ?>MB.</div>
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-gold px-4 rounded-pill fw-semibold">
                             <i class="bi bi-check-lg me-1"></i> Save Changes

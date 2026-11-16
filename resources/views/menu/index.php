@@ -342,6 +342,11 @@ foreach ($categories as $pCat) {
                                  data-child-id="<?= (int)($p['child_category_id'] ?? 0) ?>">
                                 
                                 <div class="product-card">
+                                    <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
+                                        <div class="product-image-container">
+                                            <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
+                                        </div>
+                                    <?php endif; ?>
                                     <div class="product-card-body">
                                         <div class="d-flex align-items-center justify-content-between mb-1">
                                             <div class="product-category-breadcrumb mb-0">
