@@ -24,6 +24,24 @@ class CategoryRepository
     public function __construct()
     {
         $this->db = Database::local();
+        $this->ensureImagePathColumn();
+    }
+
+    private function ensureImagePathColumn(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+        try {
+            $cols = $this->db->query("SHOW COLUMNS FROM `child_categories` LIKE 'image_path'")->fetchAll();
+            if (empty($cols)) {
+                $this->db->exec("ALTER TABLE `child_categories` ADD COLUMN `image_path` VARCHAR(255) NULL AFTER `is_visible`");
+            }
+        } catch (\Throwable $e) {
+            // Silently fall through if database user lacks ALTER permission
+        }
     }
 
     // =========================================================================
@@ -58,7 +76,7 @@ class CategoryRepository
         // Fetch all children in one query to avoid N+1.
         $stmtChildren = $this->db->query(
             'SELECT `id`, `parent_category_id`, `source_id`, `name`, `name_normalized`,
-                    `is_visible`, `sort_order`
+                    `is_visible`, `image_path`, `sort_order`
              FROM `child_categories`
              ORDER BY `sort_order` ASC, `name` ASC'
         );
@@ -203,6 +221,28 @@ class CategoryRepository
             return $stmt->rowCount() >= 0;
         } catch (Throwable $e) {
             Logger::error("CategoryRepository::updateChildVisibility failed for id={$id}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Updates the image path for a child category.
+     *
+     * @param int         $id        Local `child_categories.id`.
+     * @param string|null $imagePath Relative path from public/ or null to clear.
+     *
+     * @return bool True on success.
+     */
+    public function updateChildImage(int $id, ?string $imagePath): bool
+    {
+        try {
+            $stmt = $this->db->prepare(
+                'UPDATE `child_categories` SET `image_path` = :img, `updated_at` = NOW() WHERE `id` = :id'
+            );
+            $stmt->execute([':img' => $imagePath, ':id' => $id]);
+            return true;
+        } catch (Throwable $e) {
+            Logger::error("CategoryRepository::updateChildImage failed for id={$id}: " . $e->getMessage());
             return false;
         }
     }

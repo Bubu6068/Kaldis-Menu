@@ -34,17 +34,55 @@ $categoryPhotos = [
     'wine'                     => 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?q=80&w=700&auto=format&fit=crop',
 ];
 
-// Calculate item count per category
-$categoryCounts = [];
+// Calculate item count per child category and per parent category
+$childCategoryCounts  = [];
+$parentCategoryCounts = [];
 if (!empty($products['data'])) {
     foreach ($products['data'] as $p) {
+        $cId = (int)($p['child_category_id'] ?? 0);
         $pId = (int)($p['parent_category_id'] ?? 0);
-        $categoryCounts[$pId] = ($categoryCounts[$pId] ?? 0) + 1;
+        if ($cId > 0) {
+            $childCategoryCounts[$cId] = ($childCategoryCounts[$cId] ?? 0) + 1;
+        }
+        if ($pId > 0) {
+            $parentCategoryCounts[$pId] = ($parentCategoryCounts[$pId] ?? 0) + 1;
+        }
     }
 }
 
 $currentParent = isset($_GET['parent']) ? (int)$_GET['parent'] : 0;
 $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
+
+// Build flat list of all visible child categories for Explore Menu
+$exploreChildCategories = [];
+$activeChildObj = null;
+
+foreach ($categories as $pCat) {
+    if (!(bool)$pCat['is_visible']) continue;
+    foreach ($pCat['children'] ?? [] as $cCat) {
+        if (!(bool)$cCat['is_visible']) continue;
+        $cId = (int)$cCat['id'];
+        $itemCount = $childCategoryCounts[$cId] ?? 0;
+        
+        $childData = [
+            'id'          => $cId,
+            'name'        => $cCat['name'],
+            'parent_id'   => (int)$pCat['id'],
+            'parent_name' => $pCat['name'],
+            'image_path'  => $cCat['image_path'] ?? null,
+            'item_count'  => $itemCount,
+        ];
+
+        if ($currentChild > 0 && $cId === $currentChild) {
+            $activeChildObj = $childData;
+        }
+
+        // Only display child categories that have active products in this branch
+        if ($itemCount > 0) {
+            $exploreChildCategories[] = $childData;
+        }
+    }
+}
 ?>
 
 <?php if (empty($branch)): ?>
@@ -222,42 +260,42 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
         <!-- Main Menu Body Container -->
         <div class="container py-4" style="max-width: 820px;">
             
-            <!-- Category Cards Grid ("Explore Menu") View -->
-            <div id="categoryCardsSection" style="display: <?= ($currentParent === 0 && empty($search)) ? 'block' : 'none' ?>;">
+            <!-- Category Cards Grid ("Explore Menu") View (Child Categories) -->
+            <div id="categoryCardsSection" style="display: <?= ($currentChild === 0 && empty($search)) ? 'block' : 'none' ?>;">
                 <div class="d-flex align-items-center justify-content-between mb-3 pb-2">
                     <div class="explore-header position-relative">
                         <h3 class="explore-title mb-0">Explore Menu</h3>
                         <div class="explore-gold-bar"></div>
                     </div>
                     <span class="explore-count">
-                        <?= count(array_filter($categories, fn($c) => (bool)$c['is_visible'])) ?> CATEGORIES
+                        <?= count($exploreChildCategories) ?> CATEGORIES
                     </span>
                 </div>
 
-                <!-- 2-Column Responsive Photography Category Grid matching Screenshot 2 -->
+                <!-- 2-Column Responsive Photography Child Category Grid -->
                 <div class="row g-3">
-                    <?php foreach ($categories as $cat): ?>
+                    <?php foreach ($exploreChildCategories as $childCat): ?>
                         <?php 
-                            if (!(bool)$cat['is_visible']) continue;
-                            $catKey = strtolower(trim($cat['name']));
-                            $catPhoto = $categoryPhotos[$catKey] ?? 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=700&auto=format&fit=crop';
-                            $itemCount = $categoryCounts[(int)$cat['id']] ?? count($cat['children'] ?? []);
+                            $catKey = strtolower(trim($childCat['name']));
+                            $catPhoto = (!empty($childCat['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($childCat['image_path'], '/')))
+                                ? base_url($childCat['image_path'])
+                                : ($categoryPhotos[$catKey] ?? 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=700&auto=format&fit=crop');
                         ?>
                         <div class="col-6">
-                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . (int)$cat['id']) ?>" 
+                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&child=' . (int)$childCat['id']) ?>" 
                                class="category-photo-card d-block position-relative"
-                               data-parent-id="<?= (int)$cat['id'] ?>">
+                               data-child-id="<?= (int)$childCat['id'] ?>">
                                 
-                                <img src="<?= $catPhoto ?>" alt="<?= e($cat['name']) ?>" class="cat-card-img" loading="lazy">
+                                <img src="<?= $catPhoto ?>" alt="<?= e($childCat['name']) ?>" class="cat-card-img" loading="lazy">
                                 <div class="cat-card-gradient"></div>
 
                                 <div class="cat-card-content d-flex flex-column justify-content-between p-3">
                                     <div class="cat-card-badge-wrap">
                                         <span class="cat-card-count-badge">
-                                            <?= $itemCount ?> <?= $itemCount === 1 ? 'ITEM' : 'ITEMS' ?>
+                                            <?= $childCat['item_count'] ?> <?= $childCat['item_count'] === 1 ? 'ITEM' : 'ITEMS' ?>
                                         </span>
                                     </div>
-                                    <h4 class="cat-card-title mb-0"><?= e($cat['name']) ?></h4>
+                                    <h4 class="cat-card-title mb-0"><?= e($childCat['name']) ?></h4>
                                 </div>
                             </a>
                         </div>
@@ -266,7 +304,7 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
             </div>
 
             <!-- Product Items Section (Active when a category is chosen or searching) -->
-            <div id="productItemsSection" style="display: <?= ($currentParent > 0 || !empty($search)) ? 'block' : 'none' ?>;">
+            <div id="productItemsSection" style="display: <?= ($currentChild > 0 || $currentParent > 0 || !empty($search)) ? 'block' : 'none' ?>;">
                 
                 <!-- Breadcrumbs & Category Bar -->
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -274,53 +312,28 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
                         <i class="bi bi-arrow-left me-1"></i> Explore Menu
                     </a>
 
-                    <?php 
-                        $activeCatName = 'All Products';
-                        foreach ($categories as $cat) {
-                            if ((int)$cat['id'] === $currentParent) {
-                                $activeCatName = $cat['name'];
-                                break;
-                            }
-                        }
-                    ?>
                     <div class="small text-muted fw-semibold">
-                        Showing in: <span class="text-espresso fw-bold"><?= e($activeCatName) ?></span>
+                        <?php if ($activeChildObj): ?>
+                            Showing: <span class="text-espresso fw-bold"><?= e($activeChildObj['name']) ?></span>
+                            <span class="badge bg-light text-muted border ms-1">&rarr; <?= e($activeChildObj['parent_name']) ?></span>
+                        <?php elseif (!empty($search)): ?>
+                            Search results for: <span class="text-espresso fw-bold">"<?= e($search) ?>"</span>
+                        <?php else: ?>
+                            Showing: <span class="text-espresso fw-bold">All Products</span>
+                        <?php endif; ?>
                     </div>
                 </div>
-
-                <!-- Child Sub-category Pills (if available) -->
-                <?php if ($currentParent > 0): ?>
-                    <?php 
-                        $activeParentObj = null;
-                        foreach ($categories as $cat) {
-                            if ((int)$cat['id'] === $currentParent) {
-                                $activeParentObj = $cat;
-                                break;
-                            }
-                        }
-                    ?>
-                    <?php if ($activeParentObj && !empty($activeParentObj['children'])): ?>
-                        <div class="d-flex flex-wrap gap-2 mb-3 p-2 bg-white rounded-3 border">
-                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . $currentParent) ?>" 
-                               class="subcat-pill <?= $currentChild === 0 ? 'active' : '' ?>">
-                                All <?= e($activeParentObj['name']) ?>
-                            </a>
-                            <?php foreach ($activeParentObj['children'] as $ch): ?>
-                                <?php if ((bool)$ch['is_visible']): ?>
-                                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&parent=' . $currentParent . '&child=' . $ch['id']) ?>" 
-                                       class="subcat-pill <?= $currentChild === (int)$ch['id'] ? 'active' : '' ?>">
-                                        <?= e($ch['name']) ?>
-                                    </a>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                <?php endif; ?>
 
                 <!-- Product Grid -->
                 <div class="row g-3" id="productGrid">
                     <?php if (!empty($products['data'])): ?>
                         <?php foreach ($products['data'] as $p): ?>
+                            <?php 
+                                // Filter by selected child category if set and not searching
+                                if ($currentChild > 0 && empty($search) && (int)($p['child_category_id'] ?? 0) !== $currentChild) {
+                                    continue;
+                                }
+                            ?>
                             <div class="col-12 col-sm-6 product-card-col" 
                                  data-name="<?= e(strtolower($p['name'])) ?>"
                                  data-desc="<?= e(strtolower($p['local_description'] ?? '')) ?>"
@@ -329,27 +342,18 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
                                  data-child-id="<?= (int)($p['child_category_id'] ?? 0) ?>">
                                 
                                 <div class="product-card">
-                                    <div class="product-image-container">
-                                        <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
-                                            <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
-                                        <?php else: ?>
-                                            <i class="bi bi-cup-hot product-placeholder-icon"></i>
-                                        <?php endif; ?>
-
-                                        <?php if (!empty($p['consignee_unit'])): ?>
-                                            <div class="product-badge-overlay">
-                                                <span class="badge extra-small px-2 py-1">
+                                    <div class="product-card-body">
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <div class="product-category-breadcrumb mb-0">
+                                                <?= e($p['parent_category_name'] ?? 'Menu') ?>
+                                                <?php if (!empty($p['child_category_name'])): ?>
+                                                    &middot; <?= e($p['child_category_name']) ?>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if (!empty($p['consignee_unit'])): ?>
+                                                <span class="badge bg-gold-subtle text-gold-dark extra-small px-2 py-1">
                                                     <?= e($p['consignee_unit']) ?>
                                                 </span>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-
-                                    <div class="product-card-body">
-                                        <div class="product-category-breadcrumb">
-                                            <?= e($p['parent_category_name'] ?? 'Menu') ?>
-                                            <?php if (!empty($p['child_category_name'])): ?>
-                                                &middot; <?= e($p['child_category_name']) ?>
                                             <?php endif; ?>
                                         </div>
 

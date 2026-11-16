@@ -25,6 +25,41 @@ class ProductRepository
     public function __construct()
     {
         $this->db = Database::local();
+        $this->ensurePriceColumnsExist();
+    }
+
+    /**
+     * Self-healing schema: automatically adds new price columns if not yet migrated.
+     */
+    private function ensurePriceColumnsExist(): void
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return;
+        }
+        $ensured = true;
+
+        try {
+            $cols = $this->db->query("SHOW COLUMNS FROM `products` LIKE 'branches_price'")->fetchAll();
+            if (empty($cols)) {
+                $this->db->exec("
+                    ALTER TABLE `products`
+                      ADD COLUMN `branches_price` DECIMAL(10,2) NULL AFTER `default_value`,
+                      ADD COLUMN `currency` VARCHAR(50) NULL DEFAULT 'ETB' AFTER `branches_price`,
+                      ADD COLUMN `airport_price` DECIMAL(10,2) NULL AFTER `currency`,
+                      ADD COLUMN `eca_price` DECIMAL(10,2) NULL AFTER `airport_price`
+                ");
+                @$this->db->exec("
+                    UPDATE `products`
+                      SET `branches_price` = CAST(`default_value` AS DECIMAL(10,2))
+                      WHERE `branches_price` IS NULL 
+                        AND `default_value` IS NOT NULL 
+                        AND `default_value` REGEXP '^[0-9]+(\\.[0-9]+)?$'
+                ");
+            }
+        } catch (\Throwable $e) {
+            // Silently fall through if database user lacks ALTER permission
+        }
     }
 
     // =========================================================================

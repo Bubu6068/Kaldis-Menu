@@ -101,12 +101,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     // Check URL parameter: if on root of branch, return to category cards
                     const urlParams = new URLSearchParams(window.location.search);
-                    const parentId = parseInt(urlParams.get('parent') || '0', 10);
-                    if (parentId === 0) {
+                    const childParam = parseInt(urlParams.get('child') || '0', 10);
+                    const parentParam = parseInt(urlParams.get('parent') || '0', 10);
+                    if (childParam === 0 && parentParam === 0) {
                         if (categoryCardsSection) categoryCardsSection.style.display = 'block';
                         if (productItemsSection) productItemsSection.style.display = 'none';
+                    } else if (childParam > 0) {
+                        filterProducts('', null, childParam);
                     } else {
-                        filterProducts('', parentId);
+                        filterProducts('', parentParam, null);
                     }
                 }
             }, 80);
@@ -130,14 +133,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function filterProducts(query, categoryId) {
+    function filterProducts(query, categoryId, childId) {
         let visibleCount = 0;
 
         productCards.forEach((col) => {
             const name = (col.getAttribute('data-name') || '').toLowerCase();
             const desc = (col.getAttribute('data-desc') || '').toLowerCase();
             const code = (col.getAttribute('data-code') || '').toLowerCase();
-            const parentId = parseInt(col.getAttribute('data-parent-id') || '0', 10);
+            const pId = parseInt(col.getAttribute('data-parent-id') || '0', 10);
+            const cId = parseInt(col.getAttribute('data-child-id') || '0', 10);
 
             let matches = true;
 
@@ -145,8 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 matches = matches && (name.includes(query) || desc.includes(query) || code.includes(query));
             }
 
-            if (categoryId && categoryId > 0) {
-                matches = matches && (parentId === categoryId);
+            if (childId && childId > 0) {
+                matches = matches && (cId === childId);
+            } else if (categoryId && categoryId > 0) {
+                matches = matches && (pId === categoryId);
             }
 
             if (matches) {

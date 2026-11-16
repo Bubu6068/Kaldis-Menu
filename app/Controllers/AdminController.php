@@ -279,6 +279,93 @@ class AdminController
         Response::redirect(base_url('admin/categories'));
     }
 
+    public function categoryImageUpload(): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $childId = Request::int('child_id');
+        $child = $this->categoryRepo->getChildById($childId);
+
+        if (!$child) {
+            Session::flash('error', 'Sub-category not found.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        // Action: remove image
+        if (Request::post('action') === 'remove') {
+            if (!empty($child['image_path'])) {
+                $oldPath = BASE_PATH . '/public/' . ltrim($child['image_path'], '/');
+                if (file_exists($oldPath) && is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+            $this->categoryRepo->updateChildImage($childId, null);
+            AuditLog::record('category_image_removed', 'child_category', $childId, ['name' => $child['name']]);
+            Session::flash('success', "Image removed for '{$child['name']}'.");
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        // Action: upload image
+        if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+            Session::flash('error', 'Please select a valid image file.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $file = $_FILES['image'];
+        $maxBytes = (int) Env::getInt('UPLOAD_MAX_SIZE_MB', 5) * 1024 * 1024;
+
+        if ($file['size'] > $maxBytes) {
+            Session::flash('error', 'Image size exceeds maximum limit of ' . Env::getInt('UPLOAD_MAX_SIZE_MB', 5) . 'MB.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowedMimes, true)) {
+            Session::flash('error', 'Invalid image format. Allowed: JPG, PNG, WebP.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $extMap = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        $ext = $extMap[$mime] ?? 'jpg';
+        $filename = 'cat_child_' . $childId . '_' . time() . '.' . $ext;
+        $uploadDir = BASE_PATH . '/public/uploads/categories/';
+
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
+
+        $targetPath = $uploadDir . $filename;
+        if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+            // Remove previous image if exists
+            if (!empty($child['image_path'])) {
+                $oldPath = BASE_PATH . '/public/' . ltrim($child['image_path'], '/');
+                if (file_exists($oldPath) && is_file($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+            $relPath = 'uploads/categories/' . $filename;
+            $this->categoryRepo->updateChildImage($childId, $relPath);
+
+            AuditLog::record('category_image_uploaded', 'child_category', $childId, [
+                'name'       => $child['name'],
+                'image_path' => $relPath,
+            ]);
+
+            Session::flash('success', "Image updated for '{$child['name']}'.");
+        } else {
+            Session::flash('error', 'Failed to save image. Check directory write permissions.');
+        }
+
+        Response::redirect(base_url('admin/categories'));
+    }
+
     // =========================================================================
     // Branch Management
     // =========================================================================

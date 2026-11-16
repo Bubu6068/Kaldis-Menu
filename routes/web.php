@@ -48,6 +48,7 @@ Router::post('/admin/products/{id}',   [AdminController::class, 'productUpdate']
 // ── Admin — Categories ──────────────────────────────────────────────────────
 Router::get('/admin/categories',       [AdminController::class, 'categories']);
 Router::post('/admin/categories/toggle',[AdminController::class, 'categoryToggle']);
+Router::post('/admin/categories/image', [AdminController::class, 'categoryImageUpload']);
 
 // ── Admin — Branches ────────────────────────────────────────────────────────
 Router::get('/admin/branches',             [AdminController::class, 'branches']);
