@@ -43,6 +43,7 @@ class AnnouncementRepository
                     `badge_text`      VARCHAR(50)  NOT NULL DEFAULT 'NEW PRODUCT',
                     `message`         TEXT         NOT NULL,
                     `product_id`      INT UNSIGNED NULL,
+                    `branch_id`       INT UNSIGNED NULL,
                     `start_date`      DATE         NULL,
                     `end_date`        DATE         NULL,
                     `scroll_duration` INT UNSIGNED NOT NULL DEFAULT 25 COMMENT 'Seconds per scroll cycle',
@@ -55,9 +56,15 @@ class AnnouncementRepository
                     `updated_at`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     KEY `idx_ann_active` (`is_active`),
                     KEY `idx_ann_dates` (`start_date`, `end_date`),
-                    KEY `idx_ann_product` (`product_id`)
+                    KEY `idx_ann_product` (`product_id`),
+                    KEY `idx_ann_branch` (`branch_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
+
+            $cols = $this->db->query("SHOW COLUMNS FROM `announcements` LIKE 'branch_id'")->fetchAll();
+            if (empty($cols)) {
+                @$this->db->exec("ALTER TABLE `announcements` ADD COLUMN `branch_id` INT UNSIGNED NULL AFTER `product_id`, ADD KEY `idx_ann_branch` (`branch_id`)");
+            }
         } catch (Throwable $e) {
             // Silently continue if permissions are restricted
         }
@@ -73,6 +80,8 @@ class AnnouncementRepository
         $sql = "
             SELECT 
                 a.*,
+                b.`name` AS `branch_name`,
+                b.`code` AS `branch_code`,
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
@@ -83,6 +92,7 @@ class AnnouncementRepository
                 p.`eca_price`,
                 p.`price` AS `price_override`
             FROM `announcements` a
+            LEFT JOIN `branches` b ON b.`id` = a.`branch_id`
             LEFT JOIN `products` p ON p.`id` = a.`product_id`
             ORDER BY a.`sort_order` ASC, a.`id` DESC
         ";
@@ -106,6 +116,8 @@ class AnnouncementRepository
         $sql = "
             SELECT 
                 a.*,
+                b.`name` AS `branch_name`,
+                b.`code` AS `branch_code`,
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
@@ -116,6 +128,7 @@ class AnnouncementRepository
                 p.`eca_price`,
                 p.`price` AS `price_override`
             FROM `announcements` a
+            LEFT JOIN `branches` b ON b.`id` = a.`branch_id`
             LEFT JOIN `products` p ON p.`id` = a.`product_id`
             WHERE a.`id` = :id
             LIMIT 1
@@ -150,13 +163,15 @@ class AnnouncementRepository
             return [];
         }
 
-        $branchId = !empty($branch['id']) ? (int)$branch['id'] : null;
-        $branchJoin = $branchId !== null
-            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = a.`product_id` AND bp.`branch_id` = :branch_id)'
-            : '';
-        $branchCondition = $branchId !== null
-            ? 'AND (a.`product_id` IS NULL OR bp.`is_available` IS NULL OR bp.`is_available` = 1)'
-            : '';
+        // Hide announcement banner when no branch is selected (unselected state)
+        if (empty($branch) || empty($branch['id'])) {
+            return [];
+        }
+
+        $branchId = (int)$branch['id'];
+        $branchJoin = 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = a.`product_id` AND bp.`branch_id` = :branch_id)';
+        $branchCondition = 'AND (a.`product_id` IS NULL OR bp.`is_available` IS NULL OR bp.`is_available` = 1)
+                            AND (a.`branch_id` IS NULL OR a.`branch_id` = :selected_branch_id)';
 
         $sql = "
             SELECT 
@@ -185,9 +200,8 @@ class AnnouncementRepository
         $items = [];
         try {
             $stmt = $this->db->prepare($sql);
-            if ($branchId !== null) {
-                $stmt->bindValue(':branch_id', $branchId, PDO::PARAM_INT);
-            }
+            $stmt->bindValue(':branch_id', $branchId, PDO::PARAM_INT);
+            $stmt->bindValue(':selected_branch_id', $branchId, PDO::PARAM_INT);
             $stmt->execute();
             $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Throwable $e) {
@@ -333,12 +347,12 @@ class AnnouncementRepository
     {
         $sql = "
             INSERT INTO `announcements` (
-                `title`, `badge_text`, `message`, `product_id`,
+                `title`, `badge_text`, `message`, `product_id`, `branch_id`,
                 `start_date`, `end_date`, `scroll_duration`,
                 `bg_color`, `text_color`, `accent_color`,
                 `is_active`, `sort_order`
             ) VALUES (
-                :title, :badge_text, :message, :product_id,
+                :title, :badge_text, :message, :product_id, :branch_id,
                 :start_date, :end_date, :scroll_duration,
                 :bg_color, :text_color, :accent_color,
                 :is_active, :sort_order
@@ -352,6 +366,7 @@ class AnnouncementRepository
                 ':badge_text'      => trim((string)($data['badge_text'] ?? 'NEW PRODUCT')),
                 ':message'         => trim((string)$data['message']),
                 ':product_id'      => !empty($data['product_id']) ? (int)$data['product_id'] : null,
+                ':branch_id'       => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
                 ':start_date'      => !empty($data['start_date']) ? $data['start_date'] : null,
                 ':end_date'        => !empty($data['end_date']) ? $data['end_date'] : null,
                 ':scroll_duration' => max(10, min(120, (int)($data['scroll_duration'] ?? 25))),
@@ -384,6 +399,7 @@ class AnnouncementRepository
                 `badge_text`      = :badge_text,
                 `message`         = :message,
                 `product_id`      = :product_id,
+                `branch_id`       = :branch_id,
                 `start_date`      = :start_date,
                 `end_date`        = :end_date,
                 `scroll_duration` = :scroll_duration,
@@ -403,6 +419,7 @@ class AnnouncementRepository
                 ':badge_text'      => trim((string)($data['badge_text'] ?? 'NEW PRODUCT')),
                 ':message'         => trim((string)$data['message']),
                 ':product_id'      => !empty($data['product_id']) ? (int)$data['product_id'] : null,
+                ':branch_id'       => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
                 ':start_date'      => !empty($data['start_date']) ? $data['start_date'] : null,
                 ':end_date'        => !empty($data['end_date']) ? $data['end_date'] : null,
                 ':scroll_duration' => max(10, min(120, (int)($data['scroll_duration'] ?? 25))),

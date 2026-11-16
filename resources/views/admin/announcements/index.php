@@ -177,6 +177,7 @@
                     <th style="width: 140px;">Badge</th>
                     <th>Announcement Message</th>
                     <th>Promoted Product</th>
+                    <th>Target Branch</th>
                     <th>Schedule</th>
                     <th>Appearance</th>
                     <th class="text-center" style="width: 100px;">Status</th>
@@ -222,6 +223,17 @@
                                     </div>
                                 <?php else: ?>
                                     <span class="text-muted extra-small italic">General Announcement</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($ann['branch_name'])): ?>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2 py-1">
+                                        <i class="bi bi-shop me-1"></i><?= e($ann['branch_name']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge bg-gold-subtle text-gold-dark border border-warning-subtle rounded-pill extra-small px-2 py-1">
+                                        <i class="bi bi-globe me-1"></i>All Branches
+                                    </span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -287,7 +299,7 @@
                     <?php endforeach; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="9" class="text-center py-5">
                             <div class="py-3">
                                 <i class="bi bi-megaphone display-4 text-gold opacity-50 mb-3 d-block"></i>
                                 <h5 class="fw-bold text-espresso mb-1">No Custom Announcements Yet</h5>
@@ -370,21 +382,21 @@
                         </div>
                     </div>
 
-                    <!-- Row 2: Title & Product Link -->
+                    <!-- Row 2: Title, Product Link & Target Branch -->
                     <div class="row g-3 mb-3">
-                        <div class="col-sm-6">
+                        <div class="col-sm-5">
                             <label for="ann_title" class="form-label small fw-semibold text-espresso mb-1">
                                 Internal Title / Headline <span class="text-danger">*</span>
                             </label>
                             <input type="text" class="form-control" id="ann_title" name="title" required placeholder="e.g. Caramel Macchiato Launch">
                             <div class="form-text extra-small">Used for identification and admin reporting.</div>
                         </div>
-                        <div class="col-sm-6">
+                        <div class="col-sm-4">
                             <label for="ann_product_id" class="form-label small fw-semibold text-espresso mb-1">
                                 Link to Catalog Product <span class="text-muted fw-normal">(Optional)</span>
                             </label>
                             <select class="form-select" id="ann_product_id" name="product_id">
-                                <option value="">-- No specific product / General Brand Banner --</option>
+                                <option value="">-- No specific product --</option>
                                 <?php foreach ($products as $p): ?>
                                     <?php 
                                         $pPrice = !empty($p['branches_price']) ? number_format((float)$p['branches_price'] * 1.20, 2) . ' ETB' : (!empty($p['default_value']) ? number_format((float)$p['default_value'] * 1.20, 2) . ' ETB' : '');
@@ -400,7 +412,21 @@
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text extra-small">Automatically pulls product name, verified price, and image.</div>
+                            <div class="form-text extra-small">Auto-pulls name, price, and image.</div>
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="ann_branch_id" class="form-label small fw-semibold text-espresso mb-1">
+                                Target Branch
+                            </label>
+                            <select class="form-select" id="ann_branch_id" name="branch_id">
+                                <option value="">🌐 All Branches</option>
+                                <?php if (!empty($branches)): ?>
+                                    <?php foreach ($branches as $br): ?>
+                                        <option value="<?= (int)$br['id'] ?>"><?= e($br['name']) ?></option>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </select>
+                            <div class="form-text extra-small">Shows only when branch selected.</div>
                         </div>
                     </div>
 
@@ -660,6 +686,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const titleInput = document.getElementById('ann_title');
     const badgeInput = document.getElementById('ann_badge_text');
     const productSelect = document.getElementById('ann_product_id');
+    const branchSelect = document.getElementById('ann_branch_id');
     const messageInput = document.getElementById('ann_message');
     const startDateInput = document.getElementById('ann_start_date');
     const endDateInput = document.getElementById('ann_end_date');
@@ -777,6 +804,7 @@ document.addEventListener('DOMContentLoaded', function () {
         form.reset();
         idInput.value = '0';
         modalTitle.textContent = 'Add New Product Announcement';
+        if (branchSelect) branchSelect.value = '';
         bgInput.value = '#2C1810';
         textInput.value = '#FDF8EE';
         accentInput.value = '#C5A059';
@@ -801,6 +829,7 @@ document.addEventListener('DOMContentLoaded', function () {
             titleInput.value = data.title || '';
             badgeInput.value = data.badge_text || 'NEW PRODUCT';
             productSelect.value = data.product_id || '';
+            if (branchSelect) branchSelect.value = data.branch_id || '';
             messageInput.value = data.message || '';
             startDateInput.value = data.start_date || '';
             endDateInput.value = data.end_date || '';

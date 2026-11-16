@@ -969,6 +969,7 @@ class AdminController
         $announcements = $this->announcementRepo->findAll();
         $stats         = $this->announcementRepo->getStats();
         $settings      = $this->settingsRepo->getAll();
+        $branches      = $this->branchRepo->getActive();
 
         // Retrieve available active products for promotional assignment
         $productsResult = $this->productRepo->findAll(['is_visible' => 1, 'is_active_source' => 1], 1, 300);
@@ -979,6 +980,7 @@ class AdminController
             'announcements' => $announcements,
             'stats'         => $stats,
             'settings'      => $settings,
+            'branches'      => $branches,
             'products'      => $products,
             'success'       => Session::getFlash('success'),
             'error'         => Session::getFlash('error'),
@@ -997,6 +999,7 @@ class AdminController
         $badgeText = trim((string)Request::post('badge_text', 'NEW PRODUCT'));
         $message   = trim((string)Request::post('message', ''));
         $productId = Request::int('product_id');
+        $branchId  = Request::int('branch_id');
         $startDate = trim((string)Request::post('start_date', ''));
         $endDate   = trim((string)Request::post('end_date', ''));
         $duration  = Request::int('scroll_duration', 25);
@@ -1031,6 +1034,7 @@ class AdminController
             'badge_text'      => $badgeText !== '' ? $badgeText : 'NEW PRODUCT',
             'message'         => $message,
             'product_id'      => $productId > 0 ? $productId : null,
+            'branch_id'       => $branchId > 0 ? $branchId : null,
             'start_date'      => $startDate !== '' ? $startDate : null,
             'end_date'        => $endDate !== '' ? $endDate : null,
             'scroll_duration' => $duration > 0 ? $duration : 25,

@@ -123,48 +123,6 @@ foreach ($categories as $pCat) {
             </div>
         </section>
 
-        <?php if (!empty($announcements)): ?>
-            <?php
-            $mainAnn = $announcements[0];
-            $bBg = $mainAnn['bg_color'] ?: '#2C1810';
-            $bText = $mainAnn['text_color'] ?: '#FDF8EE';
-            $bAccent = $mainAnn['accent_color'] ?: '#C5A059';
-            $bDuration = !empty($mainAnn['scroll_duration']) ? (int)$mainAnn['scroll_duration'] : 25;
-            ?>
-            <div class="kaldis-moving-banner-container" style="background: <?= e($bBg) ?>; color: <?= e($bText) ?>;">
-                <div class="kaldis-moving-banner-inner">
-                    <div class="kaldis-moving-banner-badge-fixed" style="background: <?= e($bAccent) ?>; color: #2C1810;">
-                        <i class="bi bi-megaphone-fill me-1"></i>
-                        <span class="d-none d-sm-inline">WHAT'S NEW</span>
-                        <span class="d-inline d-sm-none">NEW</span>
-                    </div>
-                    <div class="kaldis-moving-banner-track-viewport">
-                        <div class="kaldis-moving-banner-track" style="animation-duration: <?= $bDuration ?>s;">
-                            <?php for ($loop = 0; $loop < 2; $loop++): ?>
-                                <div class="kaldis-moving-banner-group" <?= $loop > 0 ? 'aria-hidden="true"' : '' ?>>
-                                    <?php foreach ($announcements as $ann): ?>
-                                        <div class="kaldis-moving-banner-item" <?= !empty($ann['product_id']) ? 'data-product-id="' . (int)$ann['product_id'] . '"' : '' ?>>
-                                            <span class="kaldis-banner-tag" style="background: <?= e($ann['accent_color'] ?: $bAccent) ?>; color: #1c100b;">
-                                                <i class="bi bi-stars me-1"></i><?= e($ann['badge_text'] ?: 'NEW PRODUCT') ?>
-                                            </span>
-                                            <span class="kaldis-banner-cup"><i class="bi bi-cup-hot-fill"></i></span>
-                                            <?php if (!empty($ann['product_image']) && file_exists(BASE_PATH . '/public/' . ltrim($ann['product_image'], '/'))): ?>
-                                                <img src="<?= base_url($ann['product_image']) ?>" alt="" class="kaldis-banner-prod-img">
-                                            <?php endif; ?>
-                                            <span class="kaldis-banner-text">
-                                                <?= e($ann['message']) ?>
-                                            </span>
-                                            <span class="kaldis-banner-sep">&bull; ☕ &bull;</span>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endfor; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php endif; ?>
-
         <!-- Branch Grid Section -->
         <section class="container py-4 py-md-5">
             <div class="row g-3 g-md-4" id="branchesGrid">

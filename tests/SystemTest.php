@@ -242,8 +242,14 @@ class SystemTest
         $retrieved = $repo->findById($id);
         $this->assert("Announcement Retrieved by ID", !empty($retrieved) && $retrieved['title'] === 'SystemTest Announcement');
 
-        $active = $repo->findActiveForDisplay();
-        $this->assert("Announcement Active For Display", !empty($active));
+        // When no branch is selected -> announcements are hidden
+        $unselected = $repo->findActiveForDisplay(null);
+        $this->assert("Announcement Hidden When No Branch Selected", empty($unselected));
+
+        // When a branch is selected -> announcements are displayed
+        $sampleBranch = (new BranchRepository())->getActive()[0] ?? ['id' => 1, 'name' => 'Kaldis 4 Kilo', 'code' => '4_KILO'];
+        $active = $repo->findActiveForDisplay($sampleBranch);
+        $this->assert("Announcement Active When Branch Selected", !empty($active));
 
         $deleted = $repo->delete($id);
         $this->assert("Announcement Deleted Cleanly", $deleted);
