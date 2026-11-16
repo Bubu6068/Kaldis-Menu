@@ -251,7 +251,7 @@
                             </td>
                             <td class="text-center">
                                 <form action="<?= base_url("admin/announcements/{$ann['id']}/toggle") ?>" method="POST" class="d-inline">
-                                    <input type="hidden" name="_token" value="<?= \App\Helpers\Csrf::token() ?>">
+                                    <?= \App\Helpers\Csrf::field() ?>
                                     <button type="submit" class="btn btn-sm p-0 border-0" title="<?= (bool)$ann['is_active'] ? 'Click to deactivate' : 'Click to activate' ?>">
                                         <?php if ((bool)$ann['is_active']): ?>
                                             <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 extra-small">
@@ -276,7 +276,7 @@
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                     <form action="<?= base_url("admin/announcements/{$ann['id']}/delete") ?>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this announcement?');">
-                                        <input type="hidden" name="_token" value="<?= \App\Helpers\Csrf::token() ?>">
+                                        <?= \App\Helpers\Csrf::field() ?>
                                         <button type="submit" class="btn btn-outline-danger btn-sm px-2 py-1 ms-1" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
@@ -313,7 +313,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="<?= base_url('admin/announcements') ?>" method="POST" id="announcementForm">
-                <input type="hidden" name="_token" value="<?= \App\Helpers\Csrf::token() ?>">
+                <?= \App\Helpers\Csrf::field() ?>
                 <input type="hidden" name="id" id="ann_id" value="0">
 
                 <div class="modal-header bg-espresso text-white px-4 py-3 border-0">
@@ -508,7 +508,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <form action="<?= base_url('admin/announcements/settings') ?>" method="POST">
-                <input type="hidden" name="_token" value="<?= \App\Helpers\Csrf::token() ?>">
+                <?= \App\Helpers\Csrf::field() ?>
                 <div class="modal-header bg-espresso text-white px-4 py-3 border-0">
                     <h5 class="modal-title fw-bold" id="bannerSettingsModalLabel">
                         <i class="bi bi-sliders text-gold me-2"></i> Announcement Banner Settings

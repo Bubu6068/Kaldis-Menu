@@ -35,8 +35,11 @@ class Csrf
 
     public static function verify(?string $provided = null): bool
     {
+        if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
+            Session::start();
+        }
         if ($provided === null) {
-            $provided = $_POST['_csrf_token'] ?? $_POST['csrf_token'] ?? '';
+            $provided = $_POST['_csrf_token'] ?? $_POST['csrf_token'] ?? $_POST['_token'] ?? '';
         }
         $stored = $_SESSION[self::TOKEN_KEY] ?? '';
         if (empty($provided) || empty($stored)) {
