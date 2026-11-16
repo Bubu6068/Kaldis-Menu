@@ -77,6 +77,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a href="<?= base_url('admin/announcements') ?>" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', 'admin/announcements') ? 'active' : '' ?>">
+                            <i class="bi bi-megaphone me-2"></i> Announcements
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a href="<?= base_url('admin/feedbacks') ?>" class="nav-link <?= str_contains($_SERVER['REQUEST_URI'] ?? '', 'admin/feedbacks') ? 'active' : '' ?>">
                             <i class="bi bi-chat-heart me-2"></i> Customer Feedback
                         </a>

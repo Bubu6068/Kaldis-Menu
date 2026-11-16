@@ -26,7 +26,7 @@ use PDO;
 use Throwable;
 
 use App\Helpers\{Env, Database, Csrf, Session};
-use App\Repositories\{ProductRepository, CategoryRepository, BranchRepository, SettingsRepository, ImportLogRepository};
+use App\Repositories\{ProductRepository, CategoryRepository, BranchRepository, SettingsRepository, ImportLogRepository, AnnouncementRepository};
 use App\Services\{QrCodeService, ImportService};
 
 Env::load(BASE_PATH . '/.env');
@@ -52,6 +52,7 @@ class SystemTest
         $this->testFeedbackRepository();
         $this->testImportServiceHandling();
         $this->testSettingsRepository();
+        $this->testAnnouncementRepository();
         $this->testCsrfProtection();
 
         echo "\n------------------------------------------------------\n";
@@ -89,7 +90,7 @@ class SystemTest
     {
         $expected = [
             'parent_categories', 'child_categories', 'products', 'branches',
-            'branch_products', 'qr_codes', 'users', 'settings', 'import_logs', 'audit_logs', 'feedbacks'
+            'branch_products', 'qr_codes', 'users', 'settings', 'import_logs', 'audit_logs', 'feedbacks', 'announcements'
         ];
         $tables = Database::local()->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         
@@ -225,6 +226,27 @@ class SystemTest
         $repo->set('test_key', 'test_value');
         $readBack = $repo->get('test_key');
         $this->assert("Settings Write & Read (test_key)", $readBack === 'test_value');
+    }
+
+    private function testAnnouncementRepository(): void
+    {
+        $repo = new AnnouncementRepository();
+        $id = $repo->create([
+            'title'      => 'SystemTest Announcement',
+            'badge_text' => 'NEW PRODUCT',
+            'message'    => 'Test announcement message',
+            'is_active'  => 1,
+        ]);
+        $this->assert("Announcement Created in DB", $id > 0);
+
+        $retrieved = $repo->findById($id);
+        $this->assert("Announcement Retrieved by ID", !empty($retrieved) && $retrieved['title'] === 'SystemTest Announcement');
+
+        $active = $repo->findActiveForDisplay();
+        $this->assert("Announcement Active For Display", !empty($active));
+
+        $deleted = $repo->delete($id);
+        $this->assert("Announcement Deleted Cleanly", $deleted);
     }
 
     private function testCsrfProtection(): void

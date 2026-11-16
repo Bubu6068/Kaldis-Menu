@@ -944,3 +944,165 @@ footer a,
         transform: none !important;
     }
 }
+
+/* ==========================================================================
+   6. Kaldis Moving Product Announcement Banner
+   ========================================================================== */
+.kaldis-moving-banner-container {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    z-index: 10;
+    box-shadow: 0 4px 18px rgba(30, 16, 11, 0.25);
+    border-top: 1px solid rgba(197, 160, 89, 0.35);
+    border-bottom: 1px solid rgba(197, 160, 89, 0.35);
+    user-select: none;
+}
+
+.kaldis-moving-banner-inner {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    height: 48px;
+    margin: 0 auto;
+}
+
+.kaldis-moving-banner-badge-fixed {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px;
+    height: 100%;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    z-index: 3;
+    box-shadow: 4px 0 12px rgba(0, 0, 0, 0.28);
+    position: relative;
+}
+
+.kaldis-moving-banner-track-viewport {
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    mask-image: linear-gradient(to right, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 20px, black calc(100% - 20px), transparent 100%);
+}
+
+.kaldis-moving-banner-track {
+    display: flex;
+    white-space: nowrap;
+    width: max-content;
+    will-change: transform;
+    animation: kaldisBannerScroll linear infinite;
+    cursor: default;
+}
+
+/* Hover & Focus Pause */
+.kaldis-moving-banner-container:hover .kaldis-moving-banner-track,
+.kaldis-moving-banner-track:hover,
+.kaldis-moving-banner-track.is-paused {
+    animation-play-state: paused;
+}
+
+.kaldis-moving-banner-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.kaldis-moving-banner-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 20px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+}
+
+.kaldis-banner-tag {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    margin-right: 10px;
+}
+
+.kaldis-banner-cup {
+    color: #C5A059;
+    margin-right: 8px;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.kaldis-banner-prod-img {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    object-fit: cover;
+    margin-right: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.kaldis-banner-text {
+    letter-spacing: 0.01em;
+}
+
+.kaldis-banner-sep {
+    margin-left: 24px;
+    margin-right: 4px;
+    color: rgba(197, 160, 89, 0.6);
+    font-size: 0.85rem;
+}
+
+@keyframes kaldisBannerScroll {
+    0% {
+        transform: translate3d(0, 0, 0);
+    }
+    100% {
+        transform: translate3d(-50%, 0, 0);
+    }
+}
+
+@media (max-width: 576px) {
+    .kaldis-moving-banner-inner {
+        height: 42px;
+    }
+    .kaldis-moving-banner-badge-fixed {
+        padding: 0 10px;
+        font-size: 0.65rem;
+    }
+    .kaldis-moving-banner-item {
+        padding: 0 14px;
+        font-size: 0.8rem;
+    }
+    .kaldis-banner-tag {
+        font-size: 0.62rem;
+        padding: 2px 7px;
+        margin-right: 6px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kaldis-moving-banner-track {
+        animation: none !important;
+        transform: none !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .kaldis-moving-banner-group:nth-child(n+2) {
+        display: none !important;
+    }
+}

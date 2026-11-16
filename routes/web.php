@@ -45,6 +45,13 @@ Router::get('/admin/products',         [AdminController::class, 'products']);
 Router::get('/admin/products/{id}',    [AdminController::class, 'productDetail']);
 Router::post('/admin/products/{id}',   [AdminController::class, 'productUpdate']);
 
+// ── Admin — Announcements & Moving Banner ──────────────────────────────────
+Router::get('/admin/announcements',                  [AdminController::class, 'announcements']);
+Router::post('/admin/announcements',                 [AdminController::class, 'announcementSave']);
+Router::post('/admin/announcements/{id}/toggle',     [AdminController::class, 'announcementToggle']);
+Router::post('/admin/announcements/{id}/delete',     [AdminController::class, 'announcementDelete']);
+Router::post('/admin/announcements/settings',        [AdminController::class, 'announcementSettingsSave']);
+
 // ── Admin — Categories ──────────────────────────────────────────────────────
 Router::get('/admin/categories',       [AdminController::class, 'categories']);
 Router::post('/admin/categories/toggle',[AdminController::class, 'categoryToggle']);

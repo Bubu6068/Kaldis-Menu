@@ -214,4 +214,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ==========================================================================
+       5. Moving Message Banner Mobile Touch Control
+       ========================================================================== */
+    const movingBannerTrack = document.querySelector('.kaldis-moving-banner-track');
+    if (movingBannerTrack) {
+        let touchResumeTimer;
+        movingBannerTrack.addEventListener('touchstart', () => {
+            clearTimeout(touchResumeTimer);
+            movingBannerTrack.classList.add('is-paused');
+        }, { passive: true });
+
+        movingBannerTrack.addEventListener('touchend', () => {
+            touchResumeTimer = setTimeout(() => {
+                movingBannerTrack.classList.remove('is-paused');
+            }, 1200);
+        }, { passive: true });
+    }
+
 });

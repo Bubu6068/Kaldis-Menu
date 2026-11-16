@@ -15,7 +15,7 @@ namespace App\Controllers;
 
 use App\Helpers\{View, Session, Csrf, Request, Response, Database, Logger, AuditLog, Env};
 use App\Middleware\AuthMiddleware;
-use App\Repositories\{ProductRepository, CategoryRepository, BranchRepository, SettingsRepository, ImportLogRepository};
+use App\Repositories\{ProductRepository, CategoryRepository, BranchRepository, SettingsRepository, ImportLogRepository, AnnouncementRepository};
 use App\Services\{ImportService, QrCodeService};
 use Throwable;
 
@@ -26,17 +26,19 @@ class AdminController
     private BranchRepository $branchRepo;
     private SettingsRepository $settingsRepo;
     private ImportLogRepository $importLogRepo;
+    private AnnouncementRepository $announcementRepo;
 
     public function __construct()
     {
         // Enforce authentication on all admin endpoints
         AuthMiddleware::requireAuth();
 
-        $this->productRepo   = new ProductRepository();
-        $this->categoryRepo  = new CategoryRepository();
-        $this->branchRepo    = new BranchRepository();
-        $this->settingsRepo  = new SettingsRepository();
-        $this->importLogRepo = new ImportLogRepository();
+        $this->productRepo      = new ProductRepository();
+        $this->categoryRepo     = new CategoryRepository();
+        $this->branchRepo       = new BranchRepository();
+        $this->settingsRepo     = new SettingsRepository();
+        $this->importLogRepo    = new ImportLogRepository();
+        $this->announcementRepo = new AnnouncementRepository();
     }
 
     // =========================================================================
@@ -959,6 +961,155 @@ class AdminController
         $feedbackRepo->toggleReviewed((int)$id);
         Session::flash('success', 'Feedback review status updated.');
         Response::redirect(base_url('admin/feedbacks'));
+    }
+
+    // =========================================================================
+    // Announcements & Moving Message Banner Management
+    // =========================================================================
+
+    public function announcements(): void
+    {
+        $announcements = $this->announcementRepo->findAll();
+        $stats         = $this->announcementRepo->getStats();
+        $settings      = $this->settingsRepo->getAll();
+
+        // Retrieve available active products for promotional assignment
+        $productsResult = $this->productRepo->findAll(['is_visible' => 1, 'is_active_source' => 1], 1, 300);
+        $products = $productsResult['data'] ?? [];
+
+        View::render('admin/announcements/index', [
+            'title'         => 'New Product Announcements & Banner — Kaldis Admin',
+            'announcements' => $announcements,
+            'stats'         => $stats,
+            'settings'      => $settings,
+            'products'      => $products,
+            'success'       => Session::getFlash('success'),
+            'error'         => Session::getFlash('error'),
+        ], 'admin');
+    }
+
+    public function announcementSave(): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token. Please refresh and try again.');
+            Response::redirect(base_url('admin/announcements'));
+        }
+
+        $id        = Request::int('id');
+        $title     = trim((string)Request::post('title', ''));
+        $badgeText = trim((string)Request::post('badge_text', 'NEW PRODUCT'));
+        $message   = trim((string)Request::post('message', ''));
+        $productId = Request::int('product_id');
+        $startDate = trim((string)Request::post('start_date', ''));
+        $endDate   = trim((string)Request::post('end_date', ''));
+        $duration  = Request::int('scroll_duration', 25);
+        $bgColor   = trim((string)Request::post('bg_color', '#2C1810'));
+        $textColor = trim((string)Request::post('text_color', '#FDF8EE'));
+        $accentColor = trim((string)Request::post('accent_color', '#C5A059'));
+        $isActive  = Request::post('is_active') !== null ? 1 : 0;
+        $sortOrder = Request::int('sort_order', 0);
+
+        if ($title === '') {
+            Session::flash('error', 'Announcement title is required.');
+            Response::redirect(base_url('admin/announcements'));
+        }
+
+        if ($message === '') {
+            // Auto-generate message if product is selected
+            if ($productId > 0) {
+                $prod = $this->productRepo->findById($productId);
+                if ($prod) {
+                    $pPrice = !empty($prod['branches_price']) ? number_format((float)$prod['branches_price'] * 1.20, 2) . ' ETB' : '';
+                    $message = "Try our NEW " . $prod['name'] . ($pPrice ? " – " . $pPrice : "") . ". Available Now at Kaldis Coffee!";
+                } else {
+                    $message = $title;
+                }
+            } else {
+                $message = $title;
+            }
+        }
+
+        $data = [
+            'title'           => $title,
+            'badge_text'      => $badgeText !== '' ? $badgeText : 'NEW PRODUCT',
+            'message'         => $message,
+            'product_id'      => $productId > 0 ? $productId : null,
+            'start_date'      => $startDate !== '' ? $startDate : null,
+            'end_date'        => $endDate !== '' ? $endDate : null,
+            'scroll_duration' => $duration > 0 ? $duration : 25,
+            'bg_color'        => $bgColor !== '' ? $bgColor : '#2C1810',
+            'text_color'      => $textColor !== '' ? $textColor : '#FDF8EE',
+            'accent_color'    => $accentColor !== '' ? $accentColor : '#C5A059',
+            'is_active'       => $isActive,
+            'sort_order'      => $sortOrder,
+        ];
+
+        if ($id > 0) {
+            $ok = $this->announcementRepo->update($id, $data);
+            AuditLog::record('announcement_updated', 'announcement', $id, ['title' => $title]);
+            Session::flash('success', "Announcement '{$title}' updated successfully.");
+        } else {
+            $newId = $this->announcementRepo->create($data);
+            AuditLog::record('announcement_created', 'announcement', $newId, ['title' => $title]);
+            Session::flash('success', "New announcement '{$title}' published successfully.");
+        }
+
+        Response::redirect(base_url('admin/announcements'));
+    }
+
+    public function announcementToggle(string $id): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token.');
+            Response::redirect(base_url('admin/announcements'));
+        }
+
+        $annId = (int)$id;
+        $this->announcementRepo->toggleActive($annId);
+        AuditLog::record('announcement_toggled', 'announcement', $annId, []);
+        Session::flash('success', 'Announcement status updated.');
+        Response::redirect(base_url('admin/announcements'));
+    }
+
+    public function announcementDelete(string $id): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token.');
+            Response::redirect(base_url('admin/announcements'));
+        }
+
+        $annId = (int)$id;
+        $ann = $this->announcementRepo->findById($annId);
+        $title = $ann['title'] ?? "ID #{$annId}";
+
+        $this->announcementRepo->delete($annId);
+        AuditLog::record('announcement_deleted', 'announcement', $annId, ['title' => $title]);
+        Session::flash('success', "Announcement '{$title}' has been deleted.");
+        Response::redirect(base_url('admin/announcements'));
+    }
+
+    public function announcementSettingsSave(): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token.');
+            Response::redirect(base_url('admin/announcements'));
+        }
+
+        $enabled = Request::post('announcements_enabled') !== null ? '1' : '0';
+        $autoProducts = Request::post('announcements_auto_products') !== null ? '1' : '0';
+
+        $this->settingsRepo->setMany([
+            'announcements_enabled'       => $enabled,
+            'announcements_auto_products' => $autoProducts,
+        ]);
+
+        AuditLog::record('announcement_settings_updated', 'settings', null, [
+            'enabled' => $enabled,
+            'auto_products' => $autoProducts,
+        ]);
+
+        Session::flash('success', 'Announcement banner settings updated successfully.');
+        Response::redirect(base_url('admin/announcements'));
     }
 }
 

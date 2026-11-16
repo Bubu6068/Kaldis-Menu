@@ -74,6 +74,10 @@ class MenuController
         $popupProduct = $productRepo->getPopupProduct(!empty($branch['id']) ? (int)$branch['id'] : null);
         $showPrices  = ($settings['show_prices']['value'] ?? '0') === '1';
 
+        // Load active or dynamic new product announcements
+        $vatRate = (float)($settings['vat_multiplier']['value'] ?? $settings['vat_rate']['value'] ?? 1.20);
+        $announcements = (new \App\Repositories\AnnouncementRepository())->findActiveForDisplay($branch, $vatRate);
+
         $title = e($settings['menu_title']['value'] ?? 'Kaldis Coffee')
                . ' — '
                . e($settings['menu_subtitle']['value'] ?? 'Digital Menu');
@@ -83,6 +87,7 @@ class MenuController
             'categories'     => $categories,
             'products'       => $products,
             'popupProduct'   => $popupProduct,
+            'announcements'  => $announcements,
             'branch'         => $branch,
             'branches'       => $branches,
             'settings'       => $settings,
