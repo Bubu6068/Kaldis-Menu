@@ -33,7 +33,75 @@
                                 Visible on Public Menu
                             </label>
                         </div>
-                        <div class="form-text extra-small">When disabled, this product is immediately hidden from customers.</div>
+                        <div class="form-text extra-small">When disabled, this product is immediately hidden from customers across all branches.</div>
+                    </div>
+
+                    <!-- Visible Menu By Branch -->
+                    <div class="mb-4 p-3 rounded-4 bg-light border border-secondary-subtle">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div>
+                                <label class="form-label fw-bold text-espresso mb-0 small">
+                                    <i class="bi bi-shop me-1 text-gold"></i> Visible Menu By Branch
+                                </label>
+                                <div class="form-text extra-small mt-0">Control which branch menus display this product.</div>
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2 extra-small rounded-pill me-1" id="btnSelectAllBranches">
+                                    Select All
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-xs py-0 px-2 extra-small rounded-pill" id="btnDeselectAllBranches">
+                                    Deselect All
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick filter branches -->
+                        <div class="position-relative mb-2">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted extra-small"></i>
+                            <input 
+                                type="text" 
+                                id="branchFilterInput" 
+                                class="form-control form-control-sm ps-4 extra-small" 
+                                placeholder="Filter branches..."
+                            >
+                        </div>
+
+                        <!-- Scrollable list of active branches -->
+                        <div class="border rounded-3 bg-white p-2" style="max-height: 220px; overflow-y: auto;" id="branchVisibilityContainer">
+                            <?php if (!empty($branchVisibility)): ?>
+                                <?php foreach ($branchVisibility as $bv): ?>
+                                    <?php
+                                    $bvNameLower = strtolower(trim($bv['name']));
+                                    $bvCodeLower = strtolower(trim($bv['code']));
+                                    $isBvAirport = ($bvNameLower === 'airport' || $bvNameLower === 'airport 2' || str_starts_with($bvNameLower, 'airport') || in_array($bvCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
+                                    $isBvEca = ($bvNameLower === 'eca' || str_starts_with($bvNameLower, 'eca ') || in_array($bvCodeLower, ['43492', 'eca'], true));
+                                    ?>
+                                    <div class="branch-toggle-row d-flex align-items-center justify-content-between py-2 px-2 border-bottom border-light" data-branch-name="<?= e(strtolower($bv['name'])) ?>">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="small fw-semibold text-espresso"><?= e($bv['name']) ?></span>
+                                            <?php if ($isBvAirport): ?>
+                                                <span class="badge bg-gold-subtle text-gold-dark extra-small py-0 px-1">$ USD Menu</span>
+                                            <?php elseif ($isBvEca): ?>
+                                                <span class="badge bg-primary-subtle text-primary extra-small py-0 px-1">ECA Menu</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div class="form-check form-switch m-0">
+                                            <input type="hidden" name="branch_visible[<?= (int)$bv['branch_id'] ?>]" value="0">
+                                            <input 
+                                                class="form-check-input branch-vis-switch" 
+                                                type="checkbox" 
+                                                id="branch_vis_<?= (int)$bv['branch_id'] ?>" 
+                                                name="branch_visible[<?= (int)$bv['branch_id'] ?>]" 
+                                                value="1" 
+                                                <?= (int)$bv['is_available'] === 1 ? 'checked' : '' ?>
+                                            >
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <div class="text-muted extra-small py-2 text-center">No active branches found.</div>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
                     <!-- Verified Price & VAT calculation -->
@@ -143,6 +211,32 @@
                         <td><code><?= e($product['default_value'] ?? 'NULL') ?></code> <span class="badge bg-warning text-dark extra-small">Raw Field</span></td>
                     </tr>
                     <tr>
+                        <td class="text-muted">Branches Price:</td>
+                        <td>
+                            <strong><?= $product['branches_price'] !== null ? number_format((float)$product['branches_price'], 2) : '—' ?></strong>
+                            <span class="badge bg-gold-subtle text-gold-dark ms-1"><?= e($product['currency'] ?? 'ETB') ?></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Airport Price:</td>
+                        <td>
+                            <?php if (!empty($product['airport_price']) && (float)$product['airport_price'] > 0): ?>
+                                <strong>$<?= number_format((float)$product['airport_price'], 2) ?> USD</strong>
+                                <span class="extra-small text-muted d-block mt-0" style="font-size: 0.72rem;">
+                                    &times; VAT (<?= number_format((float)($vatRate ?? 1.20), 2) ?>) = <strong class="text-success">$<?= number_format((float)$product['airport_price'] * ($vatRate ?? 1.20), 2) ?> USD</strong>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-muted fst-italic">—</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">ECA Price:</td>
+                        <td>
+                            <strong><?= !empty($product['eca_price']) && (float)$product['eca_price'] > 0 ? number_format((float)$product['eca_price'], 2) . ' ETB' : '—' ?></strong>
+                        </td>
+                    </tr>
+                    <tr>
                         <td class="text-muted">Source Active:</td>
                         <td>
                             <?php if ((bool)$product['is_active_source']): ?>
@@ -172,4 +266,36 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const btnAll = document.getElementById('btnSelectAllBranches');
+    const btnNone = document.getElementById('btnDeselectAllBranches');
+    const switches = document.querySelectorAll('.branch-vis-switch');
+    const filterInput = document.getElementById('branchFilterInput');
+    const rows = document.querySelectorAll('.branch-toggle-row');
+
+    if (btnAll) {
+        btnAll.addEventListener('click', () => {
+            switches.forEach(sw => sw.checked = true);
+        });
+    }
+
+    if (btnNone) {
+        btnNone.addEventListener('click', () => {
+            switches.forEach(sw => sw.checked = false);
+        });
+    }
+
+    if (filterInput) {
+        filterInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            rows.forEach(row => {
+                const name = row.getAttribute('data-branch-name') || '';
+                row.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+            });
+        });
+    }
+});
+</script>
 

@@ -133,13 +133,15 @@ class AdminController
         }
 
         $vatRate = (float) $this->settingsRepo->get('vat_rate', '1.20');
+        $branchVisibility = $this->productRepo->getBranchVisibility((int) $id);
 
         View::render('admin/products/edit', [
-            'title'   => 'Edit Product: ' . e($product['name']),
-            'product' => $product,
-            'vatRate' => $vatRate,
-            'success' => Session::getFlash('success'),
-            'error'   => Session::getFlash('error'),
+            'title'            => 'Edit Product: ' . e($product['name']),
+            'product'          => $product,
+            'vatRate'          => $vatRate,
+            'branchVisibility' => $branchVisibility,
+            'success'          => Session::getFlash('success'),
+            'error'            => Session::getFlash('error'),
         ], 'admin');
     }
 
@@ -220,10 +222,18 @@ class AdminController
         }
 
         $this->productRepo->updateAdminFields((int) $id, $fields);
+
+        // Handle branch-level visibility updates
+        $branchVisible = Request::post('branch_visible');
+        if (is_array($branchVisible)) {
+            $this->productRepo->saveBranchVisibility((int) $id, $branchVisible);
+        }
+
         AuditLog::record('product_updated', 'product', (int) $id, [
             'name'       => $product['name'],
             'is_visible' => $isVisible,
             'price'      => $price,
+            'branch_overrides' => is_array($branchVisible) ? count($branchVisible) : 0,
         ]);
 
         Session::flash('success', "Product '{$product['name']}' updated successfully.");

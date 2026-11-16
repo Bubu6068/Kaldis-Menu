@@ -91,8 +91,18 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
                 <?php if (!empty($branches)): ?>
                     <?php foreach ($branches as $b): ?>
                         <?php 
-                            $isAirport = str_contains(strtolower($b['code']), 'airport') || str_contains(strtolower($b['name']), 'airport');
-                            $pricingLabel = $isAirport ? 'USD PRICING' : 'STANDARD PRICING';
+                            $bNameLower = strtolower(trim($b['name']));
+                            $bCodeLower = strtolower(trim($b['code']));
+                            $isAirport = ($bNameLower === 'airport' || $bNameLower === 'airport 2' || str_starts_with($bNameLower, 'airport') || in_array($bCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
+                            $isEca = ($bNameLower === 'eca' || str_starts_with($bNameLower, 'eca ') || in_array($bCodeLower, ['43492', 'eca'], true));
+
+                            if ($isAirport) {
+                                $pricingLabel = '$ USD PRICING';
+                            } elseif ($isEca) {
+                                $pricingLabel = 'ECA PRICING';
+                            } else {
+                                $pricingLabel = 'STANDARD PRICING';
+                            }
                         ?>
                         <div class="col-12 col-md-6 col-lg-4 branch-card-col" 
                              data-name="<?= e(strtolower($b['name'])) ?>" 
@@ -150,7 +160,24 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
             <div class="container" style="max-width: 820px;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div class="menu-hero-left">
-                        <h1 class="menu-branch-title mb-1"><?= e($branch['name']) ?></h1>
+                        <?php
+                            $currNameLower = !empty($branch['name']) ? strtolower(trim($branch['name'])) : '';
+                            $currCodeLower = !empty($branch['code']) ? strtolower(trim($branch['code'])) : '';
+                            $isCurrentAirport = ($currNameLower === 'airport' || $currNameLower === 'airport 2' || str_starts_with($currNameLower, 'airport') || in_array($currCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
+                            $isCurrentEca = ($currNameLower === 'eca' || str_starts_with($currNameLower, 'eca ') || in_array($currCodeLower, ['43492', 'eca'], true));
+                        ?>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+                            <h1 class="menu-branch-title mb-0"><?= e($branch['name']) ?></h1>
+                            <?php if ($isCurrentAirport): ?>
+                                <span class="badge bg-gold text-dark extra-small fw-bold px-2 py-1 rounded-pill">
+                                    <i class="bi bi-currency-dollar me-1"></i>USD Menu
+                                </span>
+                            <?php elseif ($isCurrentEca): ?>
+                                <span class="badge bg-gold text-dark extra-small fw-bold px-2 py-1 rounded-pill">
+                                    <i class="bi bi-tag-fill me-1"></i>ECA Menu
+                                </span>
+                            <?php endif; ?>
+                        </div>
                         <div class="menu-branch-pill">
                             <i class="bi bi-geo-alt-fill text-gold me-1"></i>
                             <span class="branch-address-text"><?= e($branch['address'] ?? 'Official Branch') ?></span>
@@ -335,18 +362,67 @@ $currentChild  = isset($_GET['child']) ? (int)$_GET['child'] : 0;
                                         <?php
                                         $vatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
                                         $displayPrice = null;
-                                        if ($p['price'] !== null && (float)$p['price'] > 0) {
-                                            $displayPrice = (float)$p['price'];
-                                        } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
-                                            $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                        $isDollar = false;
+                                        $priceSuffix = 'ETB';
+                                        $showVatLabel = true;
+
+                                        // 1. Airport and Airport 2 branches -> Show airport_price with VAT Multiplier & dollar $ sign
+                                        if (!empty($isCurrentAirport)) {
+                                            $isDollar = true;
+                                            $showVatLabel = true;
+                                            $priceSuffix = 'USD';
+                                            if (!empty($p['airport_price']) && is_numeric($p['airport_price']) && (float)$p['airport_price'] > 0) {
+                                                $displayPrice = round((float)$p['airport_price'] * $vatRate, 2);
+                                            } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
+                                                $displayPrice = (float)$p['price'];
+                                            }
+                                        }
+                                        // 2. ECA branch -> Show eca_price
+                                        elseif (!empty($isCurrentEca)) {
+                                            $isDollar = false;
+                                            $priceSuffix = 'ETB';
+                                            if (!empty($p['eca_price']) && is_numeric($p['eca_price']) && (float)$p['eca_price'] > 0) {
+                                                $displayPrice = (float)$p['eca_price'];
+                                                $showVatLabel = false;
+                                            } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
+                                                $displayPrice = (float)$p['price'];
+                                                $showVatLabel = true;
+                                            } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
+                                                $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
+                                                $showVatLabel = true;
+                                            } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
+                                                $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                                $showVatLabel = true;
+                                            }
+                                        }
+                                        // 3. Standard branches
+                                        else {
+                                            $isDollar = false;
+                                            $priceSuffix = e($p['price_currency'] ?? 'ETB');
+                                            $showVatLabel = true;
+                                            if ($p['price'] !== null && (float)$p['price'] > 0) {
+                                                $displayPrice = (float)$p['price'];
+                                            } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
+                                                $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
+                                            } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
+                                                $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                            }
                                         }
                                         ?>
                                         <div class="product-footer">
                                             <?php if ($showPrices && $displayPrice !== null): ?>
                                                 <div>
-                                                    <span class="product-price"><?= number_format($displayPrice, 2) ?></span>
-                                                    <span class="product-price-currency"><?= e($p['price_currency'] ?? 'ETB') ?></span>
-                                                    <span class="text-muted extra-small d-block" style="font-size: 0.65rem;">incl. VAT</span>
+                                                    <span class="product-price">
+                                                        <?php if ($isDollar): ?>
+                                                            <span class="text-gold me-1">$</span><?= number_format($displayPrice, 2) ?>
+                                                        <?php else: ?>
+                                                            <?= number_format($displayPrice, 2) ?>
+                                                        <?php endif; ?>
+                                                    </span>
+                                                    <span class="product-price-currency"><?= $priceSuffix ?></span>
+                                                    <?php if ($showVatLabel): ?>
+                                                        <span class="text-muted extra-small d-block" style="font-size: 0.65rem;">incl. VAT</span>
+                                                    <?php endif; ?>
                                                 </div>
                                             <?php else: ?>
                                                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small fw-semibold">

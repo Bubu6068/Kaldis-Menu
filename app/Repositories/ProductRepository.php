@@ -61,6 +61,10 @@ class ProductRepository
 
         [$whereClause, $params] = $this->buildWhereClause($filters);
 
+        $branchJoin = !empty($filters['branch_id'])
+            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)'
+            : '';
+
         $sql = "
             SELECT
                 p.`id`,
@@ -70,6 +74,10 @@ class ProductRepository
                 p.`gsl_type`,
                 p.`consignee_unit`,
                 p.`default_value`,
+                p.`branches_price`,
+                p.`currency`,
+                p.`airport_price`,
+                p.`eca_price`,
                 p.`is_active_source`,
                 p.`src_parent_pref_id`,
                 p.`src_parent_pref`,
@@ -90,6 +98,7 @@ class ProductRepository
             FROM `products` p
             LEFT JOIN `parent_categories` pc ON pc.`id` = p.`parent_category_id`
             LEFT JOIN `child_categories`  cc ON cc.`id` = p.`child_category_id`
+            {$branchJoin}
             {$whereClause}
             ORDER BY p.`name` ASC
             LIMIT :limit OFFSET :offset
@@ -224,14 +233,75 @@ class ProductRepository
     {
         [$whereClause, $params] = $this->buildWhereClause($filters);
 
+        $branchJoin = !empty($filters['branch_id'])
+            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)'
+            : '';
+
         $sql = "SELECT COUNT(*) FROM `products` p
                 LEFT JOIN `parent_categories` pc ON pc.`id` = p.`parent_category_id`
                 LEFT JOIN `child_categories`  cc ON cc.`id` = p.`child_category_id`
+                {$branchJoin}
                 {$whereClause}";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Retrieves branch availability status for a product across all active branches.
+     *
+     * @param int $productId
+     * @return array<int, array<string, mixed>>
+     */
+    public function getBranchVisibility(int $productId): array
+    {
+        $sql = "
+            SELECT
+                b.`id` AS `branch_id`,
+                b.`code`,
+                b.`name`,
+                b.`address`,
+                COALESCE(bp.`is_available`, 1) AS `is_available`,
+                bp.`price_override`
+            FROM `branches` b
+            LEFT JOIN `branch_products` bp ON (bp.`branch_id` = b.`id` AND bp.`product_id` = :productId)
+            WHERE b.`is_active` = 1
+            ORDER BY b.`name` ASC
+        ";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':productId' => $productId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Saves branch visibility overrides for a product.
+     *
+     * @param int $productId
+     * @param array<int, int|bool> $branchStates Map of branch_id => 1|0
+     */
+    public function saveBranchVisibility(int $productId, array $branchStates): void
+    {
+        if (empty($branchStates)) {
+            return;
+        }
+
+        $sql = "
+            INSERT INTO `branch_products` (`branch_id`, `product_id`, `is_available`)
+            VALUES (:branch_id, :product_id, :is_available)
+            ON DUPLICATE KEY UPDATE `is_available` = VALUES(`is_available`)
+        ";
+
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($branchStates as $branchId => $isVisible) {
+            $stmt->execute([
+                ':branch_id'    => (int) $branchId,
+                ':product_id'   => $productId,
+                ':is_available' => $isVisible ? 1 : 0,
+            ]);
+        }
     }
 
     // =========================================================================
@@ -275,6 +345,11 @@ class ProductRepository
         if (isset($filters['is_active_source']) && $filters['is_active_source'] !== '') {
             $conditions[] = 'p.`is_active_source` = :is_active_source';
             $params[':is_active_source'] = (int) $filters['is_active_source'];
+        }
+
+        if (!empty($filters['branch_id'])) {
+            $conditions[] = '(bp.`is_available` IS NULL OR bp.`is_available` = 1)';
+            $params[':bp_branch_id'] = (int) $filters['branch_id'];
         }
 
         $whereClause = $conditions

@@ -60,11 +60,14 @@
         <table class="table table-hover align-middle mb-0 small">
             <thead class="table-light">
                 <tr>
-                    <th style="width: 50px;">Img</th>
+                    <th style="width: 44px;">Img</th>
                     <th>Article Code</th>
                     <th>Product Name</th>
-                    <th>Categories (Parent &rarr; Child)</th>
-                    <th>Verified Price</th>
+                    <th>Categories</th>
+                    <th>branches_price</th>
+                    <th>Currency</th>
+                    <th>airport_price</th>
+                    <th>eca_price</th>
                     <th>Source Active</th>
                     <th>Menu Visible</th>
                     <th class="text-end">Actions</th>
@@ -98,29 +101,51 @@
                                     <div class="mt-1"><span class="text-muted extra-small">&rarr; <?= e($p['child_category_name']) ?></span></div>
                                 <?php endif; ?>
                             </td>
+                            <!-- branches_price -->
                             <td>
                                 <?php
-                                $effPrice = null;
                                 $vatApplied = (float)($vatRate ?? 1.20);
-                                $isCustom = false;
-                                if ($p['price'] !== null && (float)$p['price'] > 0) {
-                                    $effPrice = (float)$p['price'];
-                                    $isCustom = true;
-                                } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
-                                    $effPrice = round((float)$p['default_value'] * $vatApplied, 2);
-                                    $isCustom = false;
+                                $bPrice = null;
+                                if ($p['branches_price'] !== null && $p['branches_price'] !== '') {
+                                    $bPrice = (float)$p['branches_price'];
+                                } elseif (!empty($p['default_value']) && is_numeric($p['default_value'])) {
+                                    $bPrice = (float)$p['default_value'];
+                                } elseif ($p['price'] !== null) {
+                                    $bPrice = round((float)$p['price'] / $vatApplied, 2);
                                 }
                                 ?>
-                                <?php if ($effPrice !== null): ?>
-                                    <div class="fw-bold text-espresso"><?= number_format($effPrice, 2) ?> <?= e($p['price_currency'] ?? 'ETB') ?></div>
-                                    <?php if (!empty($p['default_value'])): ?>
-                                        <span class="text-muted extra-small d-block" style="font-size: 0.7rem;">
-                                            Base: <?= number_format((float)$p['default_value'], 2) ?> &times; <?= $vatApplied ?>
-                                            <?= $isCustom ? '<span class="badge bg-info text-dark ms-1" style="font-size:0.6rem">Manual</span>' : '' ?>
-                                        </span>
-                                    <?php endif; ?>
+                                <?php if ($bPrice !== null): ?>
+                                    <div class="fw-bold text-espresso"><?= number_format($bPrice, 2) ?></div>
+                                    <span class="text-muted extra-small d-block" style="font-size: 0.68rem;">
+                                        incl. VAT: <?= number_format($bPrice * $vatApplied, 2) ?>
+                                    </span>
                                 <?php else: ?>
-                                    <span class="text-muted extra-small fst-italic">Not verified</span>
+                                    <span class="text-muted extra-small fst-italic">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <!-- currency -->
+                            <td>
+                                <span class="badge bg-gold-subtle text-gold-dark fw-bold px-2 py-1">
+                                    <?= e($p['currency'] ?? $p['price_currency'] ?? 'ETB') ?>
+                                </span>
+                            </td>
+                            <!-- airport_price -->
+                            <td>
+                                <?php if (!empty($p['airport_price']) && (float)$p['airport_price'] > 0): ?>
+                                    <div class="fw-bold text-espresso">$<?= number_format((float)$p['airport_price'] * $vatApplied, 2) ?></div>
+                                    <span class="text-muted extra-small d-block" style="font-size: 0.68rem;">
+                                        Base: $<?= number_format((float)$p['airport_price'], 2) ?> &times; <?= number_format($vatApplied, 2) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted extra-small fst-italic">—</span>
+                                <?php endif; ?>
+                            </td>
+                            <!-- eca_price -->
+                            <td>
+                                <?php if (!empty($p['eca_price']) && (float)$p['eca_price'] > 0): ?>
+                                    <span class="fw-semibold text-espresso"><?= number_format((float)$p['eca_price'], 2) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted extra-small fst-italic">—</span>
                                 <?php endif; ?>
                             </td>
                             <td>

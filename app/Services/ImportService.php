@@ -67,8 +67,26 @@ class ImportService
     // =========================================================================
 
     /**
+     * Resolves the remote source table name (`menu_article_import` or `article_import`).
+     */
+    public function resolveSourceTable(): string
+    {
+        if ($this->source === null) {
+            return 'menu_article_import';
+        }
+        try {
+            $check = $this->source->query("SHOW TABLES LIKE 'menu_article_import'")->fetch();
+            if ($check) {
+                return 'menu_article_import';
+            }
+        } catch (\Throwable) {}
+        return 'article_import';
+    }
+
+    /**
      * Inspects the remote source schema by running a DESCRIBE and a zero-row
-     * SELECT on `article_import`.  Read-only; never mutates any data.
+     * SELECT on `menu_article_import` (or fallback `article_import`).
+     * Read-only; never mutates any data.
      *
      * @return array{columns: array<int,array<string,mixed>>, sample: array<int,array<string,mixed>>}
      *
@@ -80,12 +98,14 @@ class ImportService
             throw new RuntimeException('Source database connection is not available.');
         }
 
+        $table = $this->resolveSourceTable();
+
         $columns = $this->source
-            ->query('DESCRIBE `article_import`')
+            ->query("DESCRIBE `{$table}`")
             ->fetchAll(PDO::FETCH_ASSOC);
 
         $sample = $this->source
-            ->query('SELECT * FROM `article_import` LIMIT 3')
+            ->query("SELECT * FROM `{$table}` LIMIT 3")
             ->fetchAll(PDO::FETCH_ASSOC);
 
         return [
@@ -168,17 +188,17 @@ class ImportService
                 );
             }
 
+            // ---- Sync Branches if `branch_import` table exists -----------
+            $this->syncBranchesFromSource($dryRun);
+
             // ---- Stream and process rows --------------------------------
+            $table  = $this->resolveSourceTable();
             $offset = 0;
             do {
                 $stmt = $this->source->prepare(
-                    'SELECT `article_code`, `name`, `gsl_type_id`, `gsl_type`,
-                            `is_active`, `child_preference_id`, `child_preference`,
-                            `parent_preference_id`, `parent_preference`,
-                            `default_value`, `consignee_unit`
-                     FROM `article_import`
+                    "SELECT * FROM `{$table}`
                      ORDER BY `article_code`
-                     LIMIT :limit OFFSET :offset'
+                     LIMIT :limit OFFSET :offset"
                 );
                 $stmt->bindValue(':limit',  self::BATCH_SIZE, PDO::PARAM_INT);
                 $stmt->bindValue(':offset', $offset,          PDO::PARAM_INT);
@@ -300,7 +320,13 @@ class ImportService
                             ? (int) $row['gsl_type_id'] : null;
         $gslType        = isset($row['gsl_type'])       ? trim((string) $row['gsl_type'])       : null;
         $consigneeUnit  = isset($row['consignee_unit'])  ? trim((string) $row['consignee_unit']) : null;
-        $defaultValue   = isset($row['default_value'])   ? (string) $row['default_value']        : null;
+        $defaultValue   = isset($row['branches_price']) && $row['branches_price'] !== null && $row['branches_price'] !== ''
+                            ? (string) $row['branches_price']
+                            : (isset($row['default_value']) && $row['default_value'] !== null && $row['default_value'] !== '' ? (string) $row['default_value'] : null);
+        $branchesPrice  = $defaultValue !== null && is_numeric($defaultValue) ? (float) $defaultValue : null;
+        $currency       = !empty($row['currency']) ? trim((string) $row['currency']) : 'ETB';
+        $airportPrice   = isset($row['airport_price']) && is_numeric($row['airport_price']) ? (float) $row['airport_price'] : null;
+        $ecaPrice       = isset($row['eca_price']) && is_numeric($row['eca_price']) ? (float) $row['eca_price'] : null;
 
         // Check for existing product.
         $existing = $this->local
@@ -326,6 +352,10 @@ class ImportService
                     `gsl_type`            = :gsl_type,
                     `consignee_unit`      = :consignee_unit,
                     `default_value`       = :default_value,
+                    `branches_price`      = :branches_price,
+                    `currency`            = :currency,
+                    `airport_price`       = :airport_price,
+                    `eca_price`           = :eca_price,
                     `is_active_source`    = :is_active_source,
                     `src_parent_pref_id`  = :src_parent_pref_id,
                     `src_parent_pref`     = :src_parent_pref,
@@ -343,6 +373,10 @@ class ImportService
                 ':gsl_type'            => $gslType,
                 ':consignee_unit'      => $consigneeUnit,
                 ':default_value'       => $defaultValue,
+                ':branches_price'      => $branchesPrice,
+                ':currency'            => $currency,
+                ':airport_price'       => $airportPrice,
+                ':eca_price'           => $ecaPrice,
                 ':is_active_source'    => $isActiveSource,
                 ':src_parent_pref_id'  => isset($row['parent_preference_id']) && $row['parent_preference_id'] !== ''
                                             ? (int) $row['parent_preference_id'] : null,
@@ -357,13 +391,14 @@ class ImportService
                 ':article_code'        => $articleCode,
             ]);
             $stats['records_updated']++;
+            $this->syncBranchPrices((int) $existingRow['id'], $row);
         } else {
             // INSERT.
             $now  = date('Y-m-d H:i:s');
             $stmt = $this->local->prepare(
                 'INSERT INTO `products`
                     (`article_code`, `name`, `gsl_type_id`, `gsl_type`, `consignee_unit`,
-                     `default_value`, `is_active_source`,
+                     `default_value`, `branches_price`, `currency`, `airport_price`, `eca_price`, `is_active_source`,
                      `src_parent_pref_id`, `src_parent_pref`,
                      `src_child_pref_id`,  `src_child_pref`,
                      `parent_category_id`, `child_category_id`,
@@ -372,7 +407,7 @@ class ImportService
                      `synced_at`, `created_at`, `updated_at`)
                  VALUES
                     (:article_code, :name, :gsl_type_id, :gsl_type, :consignee_unit,
-                     :default_value, :is_active_source,
+                     :default_value, :branches_price, :currency, :airport_price, :eca_price, :is_active_source,
                      :src_parent_pref_id, :src_parent_pref,
                      :src_child_pref_id,  :src_child_pref,
                      :parent_category_id, :child_category_id,
@@ -387,6 +422,10 @@ class ImportService
                 ':gsl_type'           => $gslType,
                 ':consignee_unit'     => $consigneeUnit,
                 ':default_value'      => $defaultValue,
+                ':branches_price'     => $branchesPrice,
+                ':currency'           => $currency,
+                ':airport_price'      => $airportPrice,
+                ':eca_price'          => $ecaPrice,
                 ':is_active_source'   => $isActiveSource,
                 ':src_parent_pref_id' => isset($row['parent_preference_id']) && $row['parent_preference_id'] !== ''
                                            ? (int) $row['parent_preference_id'] : null,
@@ -400,7 +439,123 @@ class ImportService
                 ':created_at'         => $now,
                 ':updated_at'         => $now,
             ]);
+            $newId = (int) $this->local->lastInsertId();
+            if ($newId > 0) {
+                $this->syncBranchPrices($newId, $row);
+            }
             $stats['records_inserted']++;
+        }
+    }
+
+    /**
+     * Synchronizes branch-specific price overrides (e.g. airport_price, eca_price)
+     * from source row into the `branch_products` table.
+     */
+    private function syncBranchPrices(int $productId, array $row): void
+    {
+        // 1. Airport and Airport 2 Price Overrides (USD)
+        if (isset($row['airport_price']) && is_numeric($row['airport_price']) && (float) $row['airport_price'] > 0) {
+            $this->setBranchPriceOverrides(['Airport', 'Airport 2', '43516', '43532'], $productId, (float) $row['airport_price']);
+        }
+        // 2. ECA Price Override
+        if (isset($row['eca_price']) && is_numeric($row['eca_price']) && (float) $row['eca_price'] > 0) {
+            $this->setBranchPriceOverrides(['ECA', '43492'], $productId, (float) $row['eca_price']);
+        }
+    }
+
+    private function setBranchPriceOverrides(array $targets, int $productId, float $price): void
+    {
+        try {
+            $inClauses = [];
+            $params = [];
+            foreach ($targets as $i => $target) {
+                $pName = ':t_' . $i;
+                $inClauses[] = "LOWER(TRIM(`name`)) = LOWER({$pName}) OR `code` = {$pName}";
+                $params[$pName] = $target;
+            }
+            $sql = 'SELECT `id` FROM `branches` WHERE ' . implode(' OR ', $inClauses);
+            $stmt = $this->local->prepare($sql);
+            $stmt->execute($params);
+            $branchIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if (!empty($branchIds)) {
+                $overrideStmt = $this->local->prepare(
+                    'INSERT INTO `branch_products` (`branch_id`, `product_id`, `is_available`, `price_override`)
+                     VALUES (:bId, :pId, 1, :price)
+                     ON DUPLICATE KEY UPDATE `price_override` = VALUES(`price_override`), `is_available` = 1'
+                );
+                foreach ($branchIds as $bId) {
+                    $overrideStmt->execute([
+                        ':bId'   => (int) $bId,
+                        ':pId'   => $productId,
+                        ':price' => $price,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silently continue if branch override write fails
+        }
+    }
+
+    /**
+     * Synchronizes branches from remote `branch_import` table if present.
+     */
+    public function syncBranchesFromSource(bool $dryRun = false): int
+    {
+        if ($this->source === null) {
+            return 0;
+        }
+
+        try {
+            $check = $this->source->query("SHOW TABLES LIKE 'branch_import'")->fetch();
+            if (!$check) {
+                return 0;
+            }
+
+            $stmt = $this->source->query(
+                'SELECT `id`, `branch_code`, `name`, `status` FROM `branch_import`'
+            );
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if (empty($rows)) {
+                return 0;
+            }
+
+            $count = 0;
+            foreach ($rows as $row) {
+                $code = trim((string) ($row['branch_code'] ?? ''));
+                $name = trim((string) ($row['name'] ?? ''));
+                if ($code === '' && $name === '') {
+                    continue;
+                }
+                if ($code === '') {
+                    $code = strtoupper(preg_replace('/[^a-zA-Z0-9_]/', '_', $name));
+                }
+
+                $status   = strtolower(trim((string) ($row['status'] ?? 'active')));
+                $isActive = in_array($status, ['active', '1', 'enabled', 'true'], true) ? 1 : 0;
+
+                if (!$dryRun) {
+                    $upsert = $this->local->prepare(
+                        'INSERT INTO `branches` (`code`, `name`, `is_active`)
+                         VALUES (:code, :name, :is_active)
+                         ON DUPLICATE KEY UPDATE 
+                            `name` = VALUES(`name`),
+                            `is_active` = VALUES(`is_active`)'
+                    );
+                    $upsert->execute([
+                        ':code'      => $code,
+                        ':name'      => $name,
+                        ':is_active' => $isActive,
+                    ]);
+                }
+                $count++;
+            }
+
+            Logger::info("ImportService: synchronized {$count} branches from branch_import.");
+            return $count;
+        } catch (\Throwable $e) {
+            Logger::warning('ImportService: branch_import sync failed — ' . Database::sanitizeError($e->getMessage()));
+            return 0;
         }
     }
 

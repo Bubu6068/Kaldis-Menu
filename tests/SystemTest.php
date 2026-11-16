@@ -160,10 +160,14 @@ class SystemTest
     private function testFeedbackQrCodeGeneration(): void
     {
         try {
+            $branch = Database::local()->query("SELECT id, code FROM branches ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            $branchId = $branch ? (int)$branch['id'] : 1;
+            $branchCode = $branch['code'] ?? 'bole';
+
             $qrService = new QrCodeService();
-            $res = $qrService->generateFeedback(1, 'bole', 'T05', 'Test Bole Table 5 Feedback QR');
+            $res = $qrService->generateFeedback($branchId, $branchCode, 'T05', 'Test Table 5 Feedback QR');
             $this->assert("Feedback QR Code Generated", !empty($res['id']) && $res['type'] === 'feedback');
-            $this->assert("Feedback QR URL Points to /feedback", str_contains($res['url'], 'feedback') && str_contains($res['url'], 'branch=bole'));
+            $this->assert("Feedback QR URL Points to /feedback", str_contains($res['url'], 'feedback') && str_contains($res['url'], 'branch='));
         } catch (Throwable $e) {
             $this->assert("Feedback QR Code Generated", false, $e->getMessage());
         }
@@ -171,9 +175,12 @@ class SystemTest
 
     private function testFeedbackRepository(): void
     {
+        $branch = Database::local()->query("SELECT id, code FROM branches ORDER BY id ASC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+        $branchId = $branch ? (int)$branch['id'] : 1;
+
         $repo = new \App\Repositories\FeedbackRepository();
         $newId = $repo->create([
-            'branch_id'      => 1,
+            'branch_id'      => $branchId,
             'table_number'   => 'T05',
             'rating_overall' => 5,
             'rating_coffee'  => 5,

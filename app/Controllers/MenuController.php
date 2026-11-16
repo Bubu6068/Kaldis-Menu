@@ -53,6 +53,9 @@ class MenuController
 
         // Product filters
         $filters = ['is_visible' => 1, 'is_active_source' => 1];
+        if (!empty($branch['id'])) {
+            $filters['branch_id'] = (int)$branch['id'];
+        }
         $search = Request::str('q');
         if ($search !== '') {
             $filters['search'] = $search;
