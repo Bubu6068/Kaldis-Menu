@@ -789,19 +789,27 @@ class AdminController
         $rawVat = trim((string) Request::post('vat_rate', '1.20'));
         $vatRate = is_numeric($rawVat) && (float)$rawVat > 0 ? number_format((float)$rawVat, 2, '.', '') : '1.20';
 
+        $gaId = strtoupper(trim((string) Request::post('google_analytics_id', '')));
+        if ($gaId !== '' && !str_starts_with($gaId, 'G-') && !str_starts_with($gaId, 'UA-')) {
+            $gaId = 'G-' . $gaId;
+        }
+
         $kvp = [
-            'menu_title'          => trim(Request::post('menu_title', 'Kaldis Coffee')),
-            'menu_subtitle'       => trim(Request::post('menu_subtitle', 'Digital Menu')),
-            'default_branch_code' => trim(Request::post('default_branch_code', '')),
-            'fallback_category'   => trim(Request::post('fallback_category', 'Uncategorized')),
-            'show_prices'         => Request::post('show_prices') !== null ? '1' : '0',
-            'vat_rate'            => $vatRate,
-            'items_per_page'      => (string) max(10, min(100, Request::int('items_per_page', 24))),
-            'maintenance_mode'    => Request::post('maintenance_mode') !== null ? '1' : '0',
+            'menu_title'               => trim(Request::post('menu_title', 'Kaldis Coffee')),
+            'menu_subtitle'            => trim(Request::post('menu_subtitle', 'Digital Menu')),
+            'default_branch_code'      => trim(Request::post('default_branch_code', '')),
+            'fallback_category'        => trim(Request::post('fallback_category', 'Uncategorized')),
+            'show_prices'              => Request::post('show_prices') !== null ? '1' : '0',
+            'vat_rate'                 => $vatRate,
+            'items_per_page'           => (string) max(10, min(100, Request::int('items_per_page', 24))),
+            'maintenance_mode'         => Request::post('maintenance_mode') !== null ? '1' : '0',
+            // Google Analytics (GA4) Configuration
+            'google_analytics_enabled' => Request::post('google_analytics_enabled') !== null ? '1' : '0',
+            'google_analytics_id'      => $gaId,
             // Telegram Bot Configuration
-            'telegram_enabled'    => Request::post('telegram_enabled') !== null ? '1' : '0',
-            'telegram_bot_token'  => trim((string)Request::post('telegram_bot_token', '')),
-            'telegram_chat_id'    => trim((string)Request::post('telegram_chat_id', '')),
+            'telegram_enabled'         => Request::post('telegram_enabled') !== null ? '1' : '0',
+            'telegram_bot_token'       => trim((string)Request::post('telegram_bot_token', '')),
+            'telegram_chat_id'         => trim((string)Request::post('telegram_chat_id', '')),
         ];
 
         // Handle Brand Logo Upload

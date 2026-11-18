@@ -94,6 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             debounceTimer = setTimeout(() => {
                 if (query.length > 0) {
+                    if (typeof gtag === 'function' && query.length >= 3) {
+                        gtag('event', 'search', { search_term: query });
+                    }
                     // Switch to products view when searching
                     if (categoryCardsSection) categoryCardsSection.style.display = 'none';
                     if (productItemsSection) productItemsSection.style.display = 'block';
@@ -267,6 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // Google Analytics product view tracking
+        if (typeof gtag === 'function') {
+            gtag('event', 'view_item', {
+                items: [{
+                    item_id: data.code || '',
+                    item_name: data.name || '',
+                    item_category: data.category || '',
+                    price: data.price ? parseFloat(String(data.price).replace(/[^0-9.]/g, '')) || undefined : undefined
+                }]
+            });
+        }
+
         productDetailModal.show();
     }
 
@@ -276,6 +291,16 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
 
             const pId = this.getAttribute('data-product-id');
+
+            // Google Analytics announcement tap tracking
+            if (typeof gtag === 'function') {
+                gtag('event', 'select_promotion', {
+                    promotion_name: this.getAttribute('data-badge') || 'Announcement',
+                    item_id: pId || '',
+                    item_name: this.getAttribute('data-name') || ''
+                });
+            }
+
             const targetChildId = parseInt(this.getAttribute('data-child-id') || '0', 10);
             const navUrl = this.getAttribute('data-nav-url');
             const currentParams = new URLSearchParams(window.location.search);

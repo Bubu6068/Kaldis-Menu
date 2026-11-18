@@ -1,3 +1,16 @@
+<?php 
+    if (empty($settings)) {
+        try {
+            $settings = (new \App\Repositories\SettingsRepository())->getAll();
+        } catch (\Throwable $e) {
+            $settings = [];
+        }
+    }
+    $customLogo = $settings['custom_logo']['value'] ?? ''; 
+    $hasCustomLogo = !empty($customLogo);
+    $gaEnabled = ($settings['google_analytics_enabled']['value'] ?? '0') === '1';
+    $gaId = trim($settings['google_analytics_id']['value'] ?? '');
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +18,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="theme-color" content="#23160e">
     <title><?= e($title ?? 'Kaldis Coffee PLC — Digital Menu') ?></title>
+
+    <?php if ($gaEnabled && !empty($gaId)): ?>
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($gaId, ENT_QUOTES, 'UTF-8') ?>"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '<?= htmlspecialchars($gaId, ENT_QUOTES, 'UTF-8') ?>', {
+        'page_title': <?= json_encode($title ?? 'Kaldis Coffee Digital Menu') ?>,
+        'branch_name': <?= json_encode(!empty($branch['name']) ? $branch['name'] : 'All Branches') ?>,
+        'branch_code': <?= json_encode(!empty($branch['code']) ? $branch['code'] : 'all') ?>
+      });
+    </script>
+    <?php endif; ?>
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,17 +46,6 @@
     <link href="<?= asset_url('assets/css/style.css') ?>" rel="stylesheet">
 </head>
 <body class="kaldis-app">
-    <?php 
-        if (empty($settings)) {
-            try {
-                $settings = (new \App\Repositories\SettingsRepository())->getAll();
-            } catch (\Throwable $e) {
-                $settings = [];
-            }
-        }
-        $customLogo = $settings['custom_logo']['value'] ?? ''; 
-        $hasCustomLogo = !empty($customLogo);
-    ?>
     <!-- Header / Brand Navigation (Shown on non-menu pages or when requested) -->
     <?php if (empty($hideBaseHeader)): ?>
     <header class="kaldis-header sticky-top">

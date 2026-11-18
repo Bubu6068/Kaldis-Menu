@@ -54,6 +54,7 @@ class SystemTest
         $this->testSettingsRepository();
         $this->testAnnouncementRepository();
         $this->testHideByBranch();
+        $this->testGoogleAnalyticsSettings();
         $this->testCsrfProtection();
 
         echo "\n------------------------------------------------------\n";
@@ -301,6 +302,32 @@ class SystemTest
 
         // Clean up test rows
         Database::local()->exec("DELETE FROM `branch_child_categories` WHERE `branch_id` IN (9999, 8888)");
+    }
+
+    private function testGoogleAnalyticsSettings(): void
+    {
+        $repo = new SettingsRepository();
+        $repo->set('google_analytics_enabled', '1');
+        $repo->set('google_analytics_id', 'G-TEST123456');
+
+        $this->assert("Google Analytics Setting Enabled", $repo->get('google_analytics_enabled') === '1');
+        $this->assert("Google Analytics Measurement ID Saved", $repo->get('google_analytics_id') === 'G-TEST123456');
+
+        // Test base layout output with GA tag
+        ob_start();
+        $settings = $repo->getAll();
+        $title = 'Test Menu';
+        $branch = ['name' => '4 Kilo', 'code' => '43530'];
+        $content = '<div>Menu Content</div>';
+        require BASE_PATH . '/resources/views/layouts/base.php';
+        $html = ob_get_clean();
+
+        $this->assert("Google Analytics Script Rendered in Layout", str_contains($html, 'https://www.googletagmanager.com/gtag/js?id=G-TEST123456'));
+        $this->assert("Google Analytics Config Contains Branch", str_contains($html, "'branch_name': \"4 Kilo\""));
+
+        // Reset to default
+        $repo->set('google_analytics_enabled', '0');
+        $repo->set('google_analytics_id', '');
     }
 
     private function testCsrfProtection(): void

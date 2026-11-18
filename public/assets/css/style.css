@@ -163,8 +163,8 @@ body.kaldis-app {
 }
 
 .branch-hero-logo {
-    width: 68px;
-    height: 68px;
+    width: 168px;
+    height: 168px;
     border-radius: 50%;
     background: #ffffff;
     border: 2.5px solid var(--kaldis-gold);
@@ -1116,8 +1116,8 @@ footer a,
 
 @media (max-width: 576px) {
     .menu-header-logo-badge {
-        width: 66px;
-        height: 66px;
+        width: 666px;
+        height: 666px;
     }
 
     .kaldis-moving-banner-inner {

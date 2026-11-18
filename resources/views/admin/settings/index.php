@@ -120,6 +120,64 @@
                         </div>
                     </div>
 
+                    <!-- Google Analytics (GA4) Tracking -->
+                    <div class="border-top pt-4 mt-4 mb-4">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-graph-up-arrow text-warning fs-5"></i>
+                                <h6 class="fw-bold text-espresso mb-0">Google Analytics (GA4) Tracking</h6>
+                            </div>
+                            <?php 
+                                $gaActive = !empty($settings['google_analytics_id']['value']) && ($settings['google_analytics_enabled']['value'] ?? '0') === '1';
+                            ?>
+                            <?php if ($gaActive): ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small">
+                                    <i class="bi bi-circle-fill text-success me-1" style="font-size: 6px;"></i> Active &amp; Tracking
+                                </span>
+                            <?php else: ?>
+                                <span class="badge bg-secondary-subtle text-muted border rounded-pill px-3 py-1 extra-small">
+                                    <i class="bi bi-dash-circle me-1"></i> Disabled
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <p class="text-muted extra-small mb-3">
+                            Track QR code scans, customer menu views, peak hours, branch popularity, and most viewed coffee/food items with Google Analytics 4.
+                        </p>
+
+                        <div class="form-check form-switch mb-3 p-3 bg-light rounded-3 border">
+                            <input class="form-check-input ms-0 me-2" type="checkbox" id="google_analytics_enabled" name="google_analytics_enabled" value="1" <?= ($settings['google_analytics_enabled']['value'] ?? '0') === '1' ? 'checked' : '' ?>>
+                            <label class="form-check-label fw-bold text-espresso" for="google_analytics_enabled">
+                                Enable Google Analytics on Public Menu
+                            </label>
+                            <div class="form-text extra-small text-muted ps-4">
+                                Loads the Google tag (<code>gtag.js</code>) on customer-facing menu and feedback pages when active.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="google_analytics_id" class="form-label small fw-semibold text-espresso">Google Analytics Measurement ID</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted font-monospace"><i class="bi bi-tag me-1"></i> ID</span>
+                                <input type="text" class="form-control font-monospace" id="google_analytics_id" name="google_analytics_id" 
+                                       placeholder="e.g. G-XXXXXXXXXX" 
+                                       value="<?= e($settings['google_analytics_id']['value'] ?? '') ?>">
+                            </div>
+                            <div class="form-text extra-small">
+                                Found in your Google Analytics dashboard under <strong>Admin &rarr; Data Streams &rarr; Web &rarr; Measurement ID</strong>. Format: <code>G-XXXXXXXXXX</code>.
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-light rounded-3 border extra-small text-muted">
+                            <div class="fw-bold text-espresso mb-1"><i class="bi bi-info-circle text-gold me-1"></i> What gets tracked automatically:</div>
+                            <ul class="mb-0 ps-3">
+                                <li><strong>Branch visits:</strong> Menu views segmented by branch (e.g. <em>4 Kilo</em>, <em>Betel Bicha Foq</em>).</li>
+                                <li><strong>Product interactions:</strong> Detailed views of coffee and food items.</li>
+                                <li><strong>Search queries:</strong> Products customers search for in the search bar.</li>
+                                <li><strong>Announcement taps:</strong> Taps on promotional announcement banners.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <div class="border-top pt-3 mt-4 mb-3">
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" id="show_prices" name="show_prices" value="1" <?= ($settings['show_prices']['value'] ?? '0') === '1' ? 'checked' : '' ?>>
