@@ -96,6 +96,12 @@
                                                     <?php else: ?>
                                                         <span class="badge bg-danger-subtle text-danger extra-small">Hidden</span>
                                                     <?php endif; ?>
+                                                    <?php $hCount = (int)($hiddenBranchCounts[(int)$child['id']] ?? 0); ?>
+                                                    <?php if ($hCount > 0): ?>
+                                                        <span class="badge bg-warning-subtle text-dark border extra-small d-block mt-1" title="Hidden in <?= $hCount ?> branches">
+                                                            <i class="bi bi-eye-slash me-1"></i>Hidden in <?= $hCount ?> <?= $hCount === 1 ? 'branch' : 'branches' ?>
+                                                        </span>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td>
                                                     <div class="d-flex align-items-center gap-2">
@@ -129,15 +135,25 @@
                                                     </div>
                                                 </td>
                                                 <td class="text-end">
-                                                    <form action="<?= base_url('admin/categories/toggle') ?>" method="POST" class="d-inline">
-                                                        <?= \App\Helpers\Csrf::field() ?>
-                                                        <input type="hidden" name="type" value="child">
-                                                        <input type="hidden" name="id" value="<?= $child['id'] ?>">
-                                                        <input type="hidden" name="is_visible" value="<?= (bool)$child['is_visible'] ? '0' : '1' ?>">
-                                                        <button type="submit" class="btn btn-sm <?= (bool)$child['is_visible'] ? 'btn-outline-secondary' : 'btn-outline-success' ?> rounded-pill px-2 py-0 extra-small">
-                                                            <?= (bool)$child['is_visible'] ? 'Hide' : 'Show' ?>
+                                                    <div class="d-inline-flex align-items-center gap-1">
+                                                        <form action="<?= base_url('admin/categories/toggle') ?>" method="POST" class="d-inline m-0">
+                                                            <?= \App\Helpers\Csrf::field() ?>
+                                                            <input type="hidden" name="type" value="child">
+                                                            <input type="hidden" name="id" value="<?= $child['id'] ?>">
+                                                            <input type="hidden" name="is_visible" value="<?= (bool)$child['is_visible'] ? '0' : '1' ?>">
+                                                            <button type="submit" class="btn btn-sm <?= (bool)$child['is_visible'] ? 'btn-outline-secondary' : 'btn-outline-success' ?> rounded-pill px-2 py-0 extra-small">
+                                                                <?= (bool)$child['is_visible'] ? 'Hide' : 'Show' ?>
+                                                            </button>
+                                                        </form>
+
+                                                        <button type="button" 
+                                                                class="btn btn-sm btn-outline-gold rounded-pill px-2 py-0 extra-small btn-branch-visibility" 
+                                                                data-child-id="<?= (int)$child['id'] ?>" 
+                                                                data-child-name="<?= e($child['name']) ?>"
+                                                                title="Configure which branches show or hide this sub-category">
+                                                            <i class="bi bi-shop me-1"></i>Hide by Branch
                                                         </button>
-                                                    </form>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -155,4 +171,166 @@
         </div>
     </div>
 </div>
+
+<!-- =========================================================================
+     BRANCH VISIBILITY MODAL ("Hide by Branch")
+     ========================================================================= -->
+<div class="modal fade" id="branchVisibilityModal" tabindex="-1" aria-labelledby="branchVisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px;">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <form action="<?= base_url('admin/categories/branch-visibility') ?>" method="POST" id="branchVisForm">
+                <?= \App\Helpers\Csrf::field() ?>
+                <input type="hidden" name="child_id" id="modalChildId" value="0">
+
+                <div class="modal-header bg-white border-bottom py-3 px-4">
+                    <div>
+                        <h6 class="modal-title fw-bold text-espresso mb-0" id="branchVisModalLabel">
+                            <i class="bi bi-shop text-gold me-2"></i>Hide Sub-category by Branch
+                        </h6>
+                        <span class="text-muted extra-small" id="modalSubcategoryName">Select branches to show or hide this sub-category</span>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4 bg-light">
+                    <!-- Helper instruction -->
+                    <div class="p-2 mb-3 bg-white rounded-3 border extra-small text-muted">
+                        <i class="bi bi-info-circle text-gold me-1"></i>
+                        Uncheck any branch where you want to <strong>hide</strong> this sub-category and its products.
+                    </div>
+
+                    <!-- Filter & Bulk select -->
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <div class="position-relative flex-grow-1">
+                            <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted extra-small"></i>
+                            <input type="text" id="modalBranchFilter" class="form-control form-control-sm ps-4 extra-small rounded-pill" placeholder="Filter branches...">
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2 extra-small rounded-pill me-1" id="btnModalSelectAll">
+                                Select All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2 extra-small rounded-pill" id="btnModalDeselectAll">
+                                Deselect All
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scrollable list of active branches -->
+                    <div class="border rounded-3 bg-white p-2" style="max-height: 280px; overflow-y: auto;" id="modalBranchListContainer">
+                        <?php if (!empty($branches)): ?>
+                            <?php foreach ($branches as $b): ?>
+                                <div class="modal-branch-row d-flex align-items-center justify-content-between py-2 px-2 border-bottom border-light" data-branch-name="<?= e(strtolower($b['name'])) ?>">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-geo-alt-fill text-gold extra-small"></i>
+                                        <span class="small fw-semibold text-espresso"><?= e($b['name']) ?></span>
+                                        <span class="text-muted extra-small">(<?= e($b['code']) ?>)</span>
+                                    </div>
+                                    <div class="form-check form-switch m-0">
+                                        <input type="hidden" name="branch_visible[<?= (int)$b['id'] ?>]" value="0">
+                                        <input 
+                                            class="form-check-input modal-branch-switch" 
+                                            type="checkbox" 
+                                            id="modal_bv_<?= (int)$b['id'] ?>" 
+                                            name="branch_visible[<?= (int)$b['id'] ?>]" 
+                                            value="1" 
+                                            checked
+                                        >
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="text-muted extra-small py-2 text-center">No active branches found.</div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-white border-top py-2 px-4 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-gold rounded-pill px-4 fw-semibold">
+                        <i class="bi bi-check-lg me-1"></i> Save Branch Visibility
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const branchVisMap = <?= json_encode($branchVisMap ?? []) ?>;
+    const branchVisModalEl = document.getElementById('branchVisibilityModal');
+    const branchVisModal = branchVisModalEl ? new bootstrap.Modal(branchVisModalEl) : null;
+    const modalChildIdInput = document.getElementById('modalChildId');
+    const modalSubcategoryName = document.getElementById('modalSubcategoryName');
+    const modalBranchFilter = document.getElementById('modalBranchFilter');
+    const branchRows = document.querySelectorAll('.modal-branch-row');
+    const branchSwitches = document.querySelectorAll('.modal-branch-switch');
+    const btnSelectAll = document.getElementById('btnModalSelectAll');
+    const btnDeselectAll = document.getElementById('btnModalDeselectAll');
+
+    document.querySelectorAll('.btn-branch-visibility').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const childId = parseInt(this.getAttribute('data-child-id') || '0', 10);
+            const childName = this.getAttribute('data-child-name') || 'Sub-category';
+
+            if (modalChildIdInput) modalChildIdInput.value = childId;
+            if (modalSubcategoryName) {
+                modalSubcategoryName.innerHTML = 'Configuring: <strong class="text-espresso">' + childName + '</strong>';
+            }
+
+            // Populate switches based on branchVisMap
+            const childSettings = branchVisMap[childId] || {};
+            branchSwitches.forEach(function (sw) {
+                const branchId = parseInt(sw.id.replace('modal_bv_', ''), 10);
+                if (childSettings[branchId] !== undefined) {
+                    sw.checked = (parseInt(childSettings[branchId], 10) === 1);
+                } else {
+                    // Default visible (checked)
+                    sw.checked = true;
+                }
+            });
+
+            // Reset filter
+            if (modalBranchFilter) modalBranchFilter.value = '';
+            branchRows.forEach(function (row) { row.style.display = ''; });
+
+            if (branchVisModal) branchVisModal.show();
+        });
+    });
+
+    // Quick filter branches
+    if (modalBranchFilter) {
+        modalBranchFilter.addEventListener('input', function () {
+            const q = this.value.toLowerCase().trim();
+            branchRows.forEach(function (row) {
+                const name = row.getAttribute('data-branch-name') || '';
+                row.style.display = (!q || name.includes(q)) ? '' : 'none';
+            });
+        });
+    }
+
+    // Bulk Select / Deselect
+    if (btnSelectAll) {
+        btnSelectAll.addEventListener('click', function () {
+            branchRows.forEach(function (row) {
+                if (row.style.display !== 'none') {
+                    const sw = row.querySelector('.modal-branch-switch');
+                    if (sw) sw.checked = true;
+                }
+            });
+        });
+    }
+
+    if (btnDeselectAll) {
+        btnDeselectAll.addEventListener('click', function () {
+            branchRows.forEach(function (row) {
+                if (row.style.display !== 'none') {
+                    const sw = row.querySelector('.modal-branch-switch');
+                    if (sw) sw.checked = false;
+                }
+            });
+        });
+    }
+});
+</script>
 

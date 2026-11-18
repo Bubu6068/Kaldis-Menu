@@ -54,13 +54,23 @@ class BranchRepository
             return null;
         }
 
-        // 1. Direct code lookup
+        // 1. Direct name or code exact lookup in DB
+        try {
+            $stmt = Database::local()->prepare("SELECT * FROM `branches` WHERE `name` = ? OR `code` = ? LIMIT 1");
+            $stmt->execute([$refStr, $refStr]);
+            $exact = $stmt->fetch();
+            if ($exact) {
+                return $exact;
+            }
+        } catch (\Throwable $e) {}
+
+        // 2. Direct code lookup
         $b = $this->findByCode($refStr);
         if ($b) {
             return $b;
         }
 
-        // 2. Numeric ID lookup
+        // 3. Numeric ID lookup
         if (is_numeric($refStr)) {
             $b = $this->findById((int)$refStr);
             if ($b) {
@@ -68,21 +78,30 @@ class BranchRepository
             }
         }
 
-        // 3. Match against active branches
+        // 4. Match against active branches
         $active = $this->getActive();
         foreach ($active as $item) {
-            if (strcasecmp($item['code'], $refStr) === 0 || strcasecmp($item['name'], $refStr) === 0) {
+            if (strcasecmp($item['name'], $refStr) === 0 || strcasecmp($item['code'], $refStr) === 0) {
                 return $item;
             }
         }
 
-        // 4. Normalized slug / substring comparison
+        // 5. Normalized slug / substring comparison
         $cleanRef = preg_replace('/[^a-z0-9]/', '', strtolower($refStr));
         if ($cleanRef !== '') {
+            // First check exact normalized equality
             foreach ($active as $item) {
-                $cleanCode = preg_replace('/[^a-z0-9]/', '', strtolower($item['code']));
                 $cleanName = preg_replace('/[^a-z0-9]/', '', strtolower($item['name']));
-                if ($cleanCode === $cleanRef || str_contains($cleanCode, $cleanRef) || str_contains($cleanRef, $cleanCode) || str_contains($cleanName, $cleanRef)) {
+                $cleanCode = preg_replace('/[^a-z0-9]/', '', strtolower($item['code']));
+                if ($cleanName === $cleanRef || $cleanCode === $cleanRef) {
+                    return $item;
+                }
+            }
+            // Fallback substring
+            foreach ($active as $item) {
+                $cleanName = preg_replace('/[^a-z0-9]/', '', strtolower($item['name']));
+                $cleanCode = preg_replace('/[^a-z0-9]/', '', strtolower($item['code']));
+                if (str_contains($cleanName, $cleanRef) || str_contains($cleanCode, $cleanRef)) {
                     return $item;
                 }
             }

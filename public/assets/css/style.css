@@ -400,20 +400,21 @@ body.kaldis-app {
 }
 
 .menu-header-logo-badge {
-    width: 56px;
-    height: 56px;
+    width: 78px;
+    height: 78px;
     border-radius: 50%;
-    border: 2px solid var(--kaldis-gold);
+    border: 3px solid var(--kaldis-gold);
     background: #ffffff;
-    padding: 2px;
+    padding: 3px;
     object-fit: contain;
     display: block;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
-    transition: transform 0.2s ease;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .menu-header-logo-badge:hover {
-    transform: scale(1.06);
+    transform: scale(1.08);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
 }
 
 .menu-search-box {
@@ -964,7 +965,7 @@ footer a,
     align-items: center;
     position: relative;
     width: 100%;
-    height: 48px;
+    height: 66px;
     margin: 0 auto;
 }
 
@@ -972,9 +973,9 @@ footer a,
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 0 16px;
+    padding: 0 20px;
     height: 100%;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 800;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -1020,44 +1021,58 @@ footer a,
 .kaldis-moving-banner-item {
     display: inline-flex;
     align-items: center;
-    padding: 0 20px;
-    font-size: 0.88rem;
-    font-weight: 500;
-    transition: opacity 0.2s ease;
+    padding: 6px 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 9999px;
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.kaldis-moving-banner-item:hover,
+.kaldis-moving-banner-item:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    transform: scale(1.02);
+    outline: none;
 }
 
 .kaldis-banner-tag {
-    font-size: 0.68rem;
+    font-size: 0.74rem;
     font-weight: 800;
-    padding: 3px 9px;
+    padding: 4px 12px;
     border-radius: 9999px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     display: inline-flex;
     align-items: center;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
-    margin-right: 10px;
+    margin-right: 12px;
 }
 
 .kaldis-banner-cup {
     color: #C5A059;
-    margin-right: 8px;
-    font-size: 0.95rem;
+    margin-right: 10px;
+    font-size: 1.15rem;
     display: inline-flex;
     align-items: center;
 }
 
 .kaldis-banner-prod-img {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     object-fit: cover;
-    margin-right: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-right: 12px;
+    border: 2px solid rgba(197, 160, 89, 0.7);
+    background: #ffffff;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    flex-shrink: 0;
 }
 
 .kaldis-banner-text {
     letter-spacing: 0.01em;
+    font-size: 0.95rem;
+    font-weight: 600;
 }
 
 .kaldis-banner-sep {
@@ -1071,27 +1086,65 @@ footer a,
     0% {
         transform: translate3d(0, 0, 0);
     }
+
     100% {
         transform: translate3d(-50%, 0, 0);
     }
 }
 
+@keyframes productCardPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 89, 0.85);
+        transform: translateY(-4px);
+    }
+
+    50% {
+        box-shadow: 0 0 0 14px rgba(197, 160, 89, 0);
+        transform: translateY(-4px);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(197, 160, 89, 0);
+        transform: translateY(0);
+    }
+}
+
+.product-card-highlight {
+    animation: productCardPulse 1.8s ease 3;
+    border-color: var(--kaldis-gold) !important;
+}
+
 @media (max-width: 576px) {
+    .menu-header-logo-badge {
+        width: 66px;
+        height: 66px;
+    }
+
     .kaldis-moving-banner-inner {
-        height: 42px;
+        height: 54px;
     }
+
     .kaldis-moving-banner-badge-fixed {
-        padding: 0 10px;
-        font-size: 0.65rem;
+        padding: 0 12px;
+        font-size: 0.7rem;
     }
+
     .kaldis-moving-banner-item {
-        padding: 0 14px;
-        font-size: 0.8rem;
+        padding: 4px 14px;
+        font-size: 0.84rem;
     }
+
     .kaldis-banner-tag {
-        font-size: 0.62rem;
-        padding: 2px 7px;
-        margin-right: 6px;
+        font-size: 0.65rem;
+        padding: 3px 8px;
+        margin-right: 8px;
+    }
+
+    .kaldis-banner-prod-img {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        margin-right: 8px;
     }
 }
 
@@ -1102,6 +1155,7 @@ footer a,
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
     }
+
     .kaldis-moving-banner-group:nth-child(n+2) {
         display: none !important;
     }

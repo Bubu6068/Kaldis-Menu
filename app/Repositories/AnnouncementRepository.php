@@ -65,6 +65,11 @@ class AnnouncementRepository
             if (empty($cols)) {
                 @$this->db->exec("ALTER TABLE `announcements` ADD COLUMN `branch_id` INT UNSIGNED NULL AFTER `product_id`, ADD KEY `idx_ann_branch` (`branch_id`)");
             }
+
+            $colsTb = $this->db->query("SHOW COLUMNS FROM `announcements` LIKE 'target_branches'")->fetchAll();
+            if (empty($colsTb)) {
+                @$this->db->exec("ALTER TABLE `announcements` ADD COLUMN `target_branches` TEXT NULL AFTER `branch_id`");
+            }
         } catch (Throwable $e) {
             // Silently continue if permissions are restricted
         }
@@ -85,6 +90,8 @@ class AnnouncementRepository
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
+                p.`parent_category_id`,
+                p.`child_category_id`,
                 p.`default_value`,
                 p.`branches_price`,
                 p.`currency`,
@@ -121,6 +128,8 @@ class AnnouncementRepository
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
+                p.`parent_category_id`,
+                p.`child_category_id`,
                 p.`default_value`,
                 p.`branches_price`,
                 p.`currency`,
@@ -171,7 +180,7 @@ class AnnouncementRepository
         $branchId = (int)$branch['id'];
         $branchJoin = 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = a.`product_id` AND bp.`branch_id` = :branch_id)';
         $branchCondition = 'AND (a.`product_id` IS NULL OR bp.`is_available` IS NULL OR bp.`is_available` = 1)
-                            AND (a.`branch_id` IS NULL OR a.`branch_id` = :selected_branch_id)';
+                            AND (a.`branch_id` IS NULL OR a.`branch_id` = :selected_branch_id OR a.`target_branches` IS NOT NULL)';
 
         $sql = "
             SELECT 
@@ -179,6 +188,8 @@ class AnnouncementRepository
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
+                p.`parent_category_id`,
+                p.`child_category_id`,
                 p.`default_value`,
                 p.`branches_price`,
                 p.`currency`,
@@ -203,7 +214,21 @@ class AnnouncementRepository
             $stmt->bindValue(':branch_id', $branchId, PDO::PARAM_INT);
             $stmt->bindValue(':selected_branch_id', $branchId, PDO::PARAM_INT);
             $stmt->execute();
-            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $rawItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Filter by branch targeting (supports multiple branch selection via target_branches JSON array)
+            foreach ($rawItems as $item) {
+                $targetBranches = !empty($item['target_branches']) ? json_decode((string)$item['target_branches'], true) : null;
+                if (is_array($targetBranches) && !empty($targetBranches)) {
+                    $allowed = array_map('intval', $targetBranches);
+                    if (!in_array($branchId, $allowed, true)) {
+                        continue;
+                    }
+                } elseif (!empty($item['branch_id']) && (int)$item['branch_id'] !== $branchId) {
+                    continue;
+                }
+                $items[] = $item;
+            }
         } catch (Throwable $e) {
             Logger::error("AnnouncementRepository::findActiveForDisplay failed: " . $e->getMessage());
         }
@@ -246,6 +271,8 @@ class AnnouncementRepository
                 p.`name` AS `product_name`,
                 p.`article_code` AS `product_code`,
                 p.`image_path` AS `product_image`,
+                p.`parent_category_id`,
+                p.`child_category_id`,
                 p.`default_value`,
                 p.`branches_price`,
                 p.`currency`,
@@ -347,12 +374,12 @@ class AnnouncementRepository
     {
         $sql = "
             INSERT INTO `announcements` (
-                `title`, `badge_text`, `message`, `product_id`, `branch_id`,
+                `title`, `badge_text`, `message`, `product_id`, `branch_id`, `target_branches`,
                 `start_date`, `end_date`, `scroll_duration`,
                 `bg_color`, `text_color`, `accent_color`,
                 `is_active`, `sort_order`
             ) VALUES (
-                :title, :badge_text, :message, :product_id, :branch_id,
+                :title, :badge_text, :message, :product_id, :branch_id, :target_branches,
                 :start_date, :end_date, :scroll_duration,
                 :bg_color, :text_color, :accent_color,
                 :is_active, :sort_order
@@ -367,6 +394,7 @@ class AnnouncementRepository
                 ':message'         => trim((string)$data['message']),
                 ':product_id'      => !empty($data['product_id']) ? (int)$data['product_id'] : null,
                 ':branch_id'       => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
+                ':target_branches' => !empty($data['target_branches']) ? (string)$data['target_branches'] : null,
                 ':start_date'      => !empty($data['start_date']) ? $data['start_date'] : null,
                 ':end_date'        => !empty($data['end_date']) ? $data['end_date'] : null,
                 ':scroll_duration' => max(10, min(120, (int)($data['scroll_duration'] ?? 25))),
@@ -400,6 +428,7 @@ class AnnouncementRepository
                 `message`         = :message,
                 `product_id`      = :product_id,
                 `branch_id`       = :branch_id,
+                `target_branches` = :target_branches,
                 `start_date`      = :start_date,
                 `end_date`        = :end_date,
                 `scroll_duration` = :scroll_duration,
@@ -420,6 +449,7 @@ class AnnouncementRepository
                 ':message'         => trim((string)$data['message']),
                 ':product_id'      => !empty($data['product_id']) ? (int)$data['product_id'] : null,
                 ':branch_id'       => !empty($data['branch_id']) ? (int)$data['branch_id'] : null,
+                ':target_branches' => !empty($data['target_branches']) ? (string)$data['target_branches'] : null,
                 ':start_date'      => !empty($data['start_date']) ? $data['start_date'] : null,
                 ':end_date'        => !empty($data['end_date']) ? $data['end_date'] : null,
                 ':scroll_duration' => max(10, min(120, (int)($data['scroll_duration'] ?? 25))),

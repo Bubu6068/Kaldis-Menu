@@ -154,7 +154,7 @@
                                     <span class="fw-semibold text-espresso"><?= e($b['name']) ?></span>
                                     <div class="text-muted extra-small">Code: <code><?= e($b['code']) ?></code></div>
                                 </div>
-                                <a href="<?= base_url('menu?branch=' . urlencode($b['code'])) ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 extra-small">
+                                <a href="<?= base_url('menu?' . urlencode($b['name'])) ?>" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2 extra-small">
                                     Menu
                                 </a>
                             </li>

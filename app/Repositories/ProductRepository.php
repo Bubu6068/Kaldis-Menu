@@ -99,13 +99,14 @@ class ProductRepository
     public function findAll(array $filters = [], int $page = 1, int $perPage = 24): array
     {
         $page    = max(1, $page);
-        $perPage = max(1, min(200, $perPage));
+        $perPage = max(1, min(5000, $perPage));
         $offset  = ($page - 1) * $perPage;
 
         [$whereClause, $params] = $this->buildWhereClause($filters);
 
         $branchJoin = !empty($filters['branch_id'])
-            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)'
+            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)
+               LEFT JOIN `branch_child_categories` bcc ON (bcc.`child_category_id` = p.`child_category_id` AND bcc.`branch_id` = :bcc_branch_id)'
             : '';
 
         $sql = "
@@ -278,7 +279,8 @@ class ProductRepository
         [$whereClause, $params] = $this->buildWhereClause($filters);
 
         $branchJoin = !empty($filters['branch_id'])
-            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)'
+            ? 'LEFT JOIN `branch_products` bp ON (bp.`product_id` = p.`id` AND bp.`branch_id` = :bp_branch_id)
+               LEFT JOIN `branch_child_categories` bcc ON (bcc.`child_category_id` = p.`child_category_id` AND bcc.`branch_id` = :bcc_branch_id)'
             : '';
 
         $sql = "SELECT COUNT(*) FROM `products` p
@@ -439,7 +441,9 @@ class ProductRepository
 
         if (!empty($filters['branch_id'])) {
             $conditions[] = '(bp.`is_available` IS NULL OR bp.`is_available` = 1)';
+            $conditions[] = '(bcc.`is_available` IS NULL OR bcc.`is_available` = 1)';
             $params[':bp_branch_id'] = (int) $filters['branch_id'];
+            $params[':bcc_branch_id'] = (int) $filters['branch_id'];
         }
 
         $whereClause = $conditions

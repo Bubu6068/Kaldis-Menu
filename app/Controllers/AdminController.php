@@ -248,14 +248,52 @@ class AdminController
 
     public function categories(): void
     {
-        $categories = $this->categoryRepo->getParentCategoriesWithChildren();
+        $categories         = $this->categoryRepo->getParentCategoriesWithChildren();
+        $branches           = $this->branchRepo->getActive();
+        $branchVisMap       = $this->categoryRepo->getBranchChildVisibilityMap();
+        $hiddenBranchCounts = $this->categoryRepo->getHiddenBranchCounts();
 
         View::render('admin/categories/index', [
-            'title'      => 'Category Management — Kaldis Coffee Admin',
-            'categories' => $categories,
-            'success'    => Session::getFlash('success'),
-            'error'      => Session::getFlash('error'),
+            'title'              => 'Category Management — Kaldis Coffee Admin',
+            'categories'         => $categories,
+            'branches'           => $branches,
+            'branchVisMap'       => $branchVisMap,
+            'hiddenBranchCounts' => $hiddenBranchCounts,
+            'success'            => Session::getFlash('success'),
+            'error'              => Session::getFlash('error'),
         ], 'admin');
+    }
+
+    public function categoryBranchVisibility(): void
+    {
+        if (!Csrf::verify()) {
+            Session::flash('error', 'Invalid security token.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $childId = Request::int('child_id');
+        $child   = $this->categoryRepo->getChildById($childId);
+
+        if (!$child) {
+            Session::flash('error', 'Sub-category not found.');
+            Response::redirect(base_url('admin/categories'));
+        }
+
+        $branchVisInput = Request::post('branch_visible'); // array [branch_id => 0 or 1]
+        if (is_array($branchVisInput)) {
+            $cleanMap = [];
+            foreach ($branchVisInput as $bId => $val) {
+                $cleanMap[(int)$bId] = (int)$val;
+            }
+            $this->categoryRepo->saveBranchChildVisibility($childId, $cleanMap);
+            AuditLog::record('category_branch_visibility', 'child_category', $childId, [
+                'name'     => $child['name'],
+                'branches' => $cleanMap,
+            ]);
+            Session::flash('success', "Branch visibility updated for '{$child['name']}'.");
+        }
+
+        Response::redirect(base_url('admin/categories'));
     }
 
     public function categoryToggle(): void
@@ -999,7 +1037,24 @@ class AdminController
         $badgeText = trim((string)Request::post('badge_text', 'NEW PRODUCT'));
         $message   = trim((string)Request::post('message', ''));
         $productId = Request::int('product_id');
-        $branchId  = Request::int('branch_id');
+
+        // Multi-branch targeting
+        $targetAll = Request::post('target_all') !== null;
+        $targetBranchesInput = Request::post('target_branches');
+        $targetBranchesJson = null;
+        $branchId = null;
+
+        if (!$targetAll && !empty($targetBranchesInput) && is_array($targetBranchesInput)) {
+            $branchIds = array_values(array_filter(array_map('intval', $targetBranchesInput), fn($v) => $v > 0));
+            if (!empty($branchIds)) {
+                $targetBranchesJson = json_encode($branchIds);
+                $branchId = count($branchIds) === 1 ? $branchIds[0] : null;
+            }
+        } elseif (!$targetAll && Request::int('branch_id') > 0) {
+            $branchId = Request::int('branch_id');
+            $targetBranchesJson = json_encode([$branchId]);
+        }
+
         $startDate = trim((string)Request::post('start_date', ''));
         $endDate   = trim((string)Request::post('end_date', ''));
         $duration  = Request::int('scroll_duration', 25);
@@ -1034,7 +1089,8 @@ class AdminController
             'badge_text'      => $badgeText !== '' ? $badgeText : 'NEW PRODUCT',
             'message'         => $message,
             'product_id'      => $productId > 0 ? $productId : null,
-            'branch_id'       => $branchId > 0 ? $branchId : null,
+            'branch_id'       => $branchId,
+            'target_branches' => $targetBranchesJson,
             'start_date'      => $startDate !== '' ? $startDate : null,
             'end_date'        => $endDate !== '' ? $endDate : null,
             'scroll_duration' => $duration > 0 ? $duration : 25,

@@ -62,6 +62,9 @@ foreach ($categories as $pCat) {
     foreach ($pCat['children'] ?? [] as $cCat) {
         if (!(bool)$cCat['is_visible']) continue;
         $cId = (int)$cCat['id'];
+        if (!empty($hiddenChildIds) && in_array($cId, $hiddenChildIds, true)) {
+            continue; // Hidden by branch
+        }
         $itemCount = $childCategoryCounts[$cId] ?? 0;
         
         $childData = [
@@ -145,7 +148,7 @@ foreach ($categories as $pCat) {
                         <div class="col-12 col-md-6 col-lg-4 branch-card-col" 
                              data-name="<?= e(strtolower($b['name'])) ?>" 
                              data-address="<?= e(strtolower($b['address'] ?? '')) ?>">
-                            <a href="<?= base_url('menu?branch=' . urlencode($b['code'])) ?>" class="branch-card d-flex flex-column h-100 text-decoration-none">
+                            <a href="<?= base_url('menu?' . urlencode($b['name'])) ?>" class="branch-card d-flex flex-column h-100 text-decoration-none">
                                 <!-- Watermark paper plane/cursor icon -->
                                 <div class="branch-watermark">
                                     <i class="bi bi-cursor-fill"></i>
@@ -216,25 +219,19 @@ foreach ($categories as $pCat) {
                                 </span>
                             <?php endif; ?>
                         </div>
-                        <div class="menu-branch-pill">
-                            <i class="bi bi-geo-alt-fill text-gold me-1"></i>
-                            <span class="branch-address-text"><?= e($branch['address'] ?? 'Official Branch') ?></span>
-                            <span class="mx-1 text-white-50">&bull;</span>
-                            <a href="<?= base_url('menu?change_branch=1') ?>" class="menu-change-link" title="Switch to another branch">
-                                CHANGE
-                            </a>
-                        </div>
                     </div>
 
                     <div class="menu-hero-right">
                         <?php if ($logoUrl): ?>
-                            <a href="<?= base_url('menu?change_branch=1') ?>" title="Kaldis Coffee">
+                            <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" title="Return to Menu">
                                 <img src="<?= $logoUrl ?>" alt="Kaldis Logo" class="menu-header-logo-badge shadow-sm">
                             </a>
                         <?php else: ?>
-                            <div class="brand-crest" style="width: 48px; height: 48px;">
-                                <i class="bi bi-cup-hot-fill text-gold fs-4"></i>
-                            </div>
+                            <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" title="Return to Menu" class="text-decoration-none">
+                                <div class="brand-crest" style="width: 72px; height: 72px;">
+                                    <i class="bi bi-cup-hot-fill text-gold fs-2"></i>
+                                </div>
+                            </a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -277,13 +274,42 @@ foreach ($categories as $pCat) {
                             <?php for ($loop = 0; $loop < 2; $loop++): ?>
                                 <div class="kaldis-moving-banner-group" <?= $loop > 0 ? 'aria-hidden="true"' : '' ?>>
                                     <?php foreach ($announcements as $ann): ?>
-                                        <div class="kaldis-moving-banner-item" <?= !empty($ann['product_id']) ? 'data-product-id="' . (int)$ann['product_id'] . '"' : '' ?>>
+                                        <?php 
+                                            $annImg = (!empty($ann['product_image']) && file_exists(BASE_PATH . '/public/' . ltrim($ann['product_image'], '/'))) ? base_url($ann['product_image']) : '';
+                                            $annChildId = (int)($ann['child_category_id'] ?? 0);
+                                            $annParentId = (int)($ann['parent_category_id'] ?? 0);
+                                            $annProductId = (int)($ann['product_id'] ?? 0);
+
+                                            // Target navigation URL directly to child category where product belongs
+                                            $navUrl = '';
+                                            if ($annChildId > 0) {
+                                                $navUrl = base_url('menu?' . urlencode($branch['name']) . '&child=' . $annChildId . ($annProductId > 0 ? '&product=' . $annProductId : ''));
+                                            } elseif ($annParentId > 0) {
+                                                $navUrl = base_url('menu?' . urlencode($branch['name']) . '&parent=' . $annParentId . ($annProductId > 0 ? '&product=' . $annProductId : ''));
+                                            }
+                                        ?>
+                                        <div class="kaldis-moving-banner-item" 
+                                             <?= $annProductId > 0 ? 'data-product-id="' . $annProductId . '"' : '' ?>
+                                             data-child-id="<?= $annChildId ?>"
+                                             data-parent-id="<?= $annParentId ?>"
+                                             data-nav-url="<?= e($navUrl) ?>"
+                                             data-name="<?= e($ann['product_name'] ?? $ann['title']) ?>"
+                                             data-price="<?= e($ann['formatted_price'] ?? '') ?>"
+                                             data-code="<?= e($ann['product_code'] ?? '') ?>"
+                                             data-image="<?= e($annImg) ?>"
+                                             data-message="<?= e($ann['message'] ?? '') ?>"
+                                             data-badge="<?= e($ann['badge_text'] ?: 'NEW PRODUCT') ?>"
+                                             data-desc="<?= e($ann['local_description'] ?? $ann['message'] ?? '') ?>"
+                                             role="button"
+                                             tabindex="0"
+                                             title="<?= $navUrl ? 'Navigate to ' . e($ann['product_name'] ?? 'product') : 'View product details' ?>"
+                                        >
                                             <span class="kaldis-banner-tag" style="background: <?= e($ann['accent_color'] ?: $bAccent) ?>; color: #1c100b;">
                                                 <i class="bi bi-stars me-1"></i><?= e($ann['badge_text'] ?: 'NEW PRODUCT') ?>
                                             </span>
                                             <span class="kaldis-banner-cup"><i class="bi bi-cup-hot-fill"></i></span>
-                                            <?php if (!empty($ann['product_image']) && file_exists(BASE_PATH . '/public/' . ltrim($ann['product_image'], '/'))): ?>
-                                                <img src="<?= base_url($ann['product_image']) ?>" alt="" class="kaldis-banner-prod-img">
+                                            <?php if ($annImg): ?>
+                                                <img src="<?= $annImg ?>" alt="<?= e($ann['product_name'] ?? '') ?>" class="kaldis-banner-prod-img">
                                             <?php endif; ?>
                                             <span class="kaldis-banner-text">
                                                 <?= e($ann['message']) ?>
@@ -324,7 +350,7 @@ foreach ($categories as $pCat) {
                                 : ($categoryPhotos[$catKey] ?? 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=700&auto=format&fit=crop');
                         ?>
                         <div class="col-6">
-                            <a href="<?= base_url('menu?branch=' . urlencode($branch['code']) . '&child=' . (int)$childCat['id']) ?>" 
+                            <a href="<?= base_url('menu?' . urlencode($branch['name']) . '&child=' . (int)$childCat['id']) ?>" 
                                class="category-photo-card d-block position-relative"
                                data-child-id="<?= (int)$childCat['id'] ?>">
                                 
@@ -350,7 +376,7 @@ foreach ($categories as $pCat) {
                 
                 <!-- Breadcrumbs & Category Bar -->
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code'])) ?>" class="btn btn-sm btn-outline-gold rounded-pill px-3" id="backToCategoriesBtn">
+                    <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" class="btn btn-sm btn-outline-gold rounded-pill px-3" id="backToCategoriesBtn">
                         <i class="bi bi-arrow-left me-1"></i> Explore Menu
                     </a>
 
@@ -375,15 +401,78 @@ foreach ($categories as $pCat) {
                                 if ($currentChild > 0 && empty($search) && (int)($p['child_category_id'] ?? 0) !== $currentChild) {
                                     continue;
                                 }
+
+                                $vatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
+                                $displayPrice = null;
+                                $isDollar = false;
+                                $priceSuffix = 'ETB';
+                                $showVatLabel = true;
+
+                                // 1. Airport and Airport 2 branches -> Show airport_price with VAT Multiplier & dollar $ sign
+                                if (!empty($isCurrentAirport)) {
+                                    $isDollar = true;
+                                    $showVatLabel = true;
+                                    $priceSuffix = 'USD';
+                                    if (!empty($p['airport_price']) && is_numeric($p['airport_price']) && (float)$p['airport_price'] > 0) {
+                                        $displayPrice = round((float)$p['airport_price'] * $vatRate, 2);
+                                    } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
+                                        $displayPrice = (float)$p['price'];
+                                    }
+                                }
+                                // 2. ECA branch -> Show eca_price
+                                elseif (!empty($isCurrentEca)) {
+                                    $isDollar = false;
+                                    $priceSuffix = 'ETB';
+                                    if (!empty($p['eca_price']) && is_numeric($p['eca_price']) && (float)$p['eca_price'] > 0) {
+                                        $displayPrice = (float)$p['eca_price'];
+                                        $showVatLabel = false;
+                                    } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
+                                        $displayPrice = (float)$p['price'];
+                                        $showVatLabel = true;
+                                    } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
+                                        $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
+                                        $showVatLabel = true;
+                                    } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
+                                        $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                        $showVatLabel = true;
+                                    }
+                                }
+                                // 3. Standard branches
+                                else {
+                                    $isDollar = false;
+                                    $priceSuffix = e($p['price_currency'] ?? 'ETB');
+                                    $showVatLabel = true;
+                                    if ($p['price'] !== null && (float)$p['price'] > 0) {
+                                        $displayPrice = (float)$p['price'];
+                                    } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
+                                        $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
+                                    } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
+                                        $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
+                                    }
+                                }
                             ?>
                             <div class="col-12 col-sm-6 product-card-col" 
+                                 id="prod-card-<?= (int)$p['id'] ?>"
+                                 data-product-id="<?= (int)$p['id'] ?>"
                                  data-name="<?= e(strtolower($p['name'])) ?>"
                                  data-desc="<?= e(strtolower($p['local_description'] ?? '')) ?>"
                                  data-code="<?= e(strtolower($p['article_code'])) ?>"
                                  data-parent-id="<?= (int)($p['parent_category_id'] ?? 0) ?>"
                                  data-child-id="<?= (int)($p['child_category_id'] ?? 0) ?>">
                                 
-                                <div class="product-card">
+                                <div class="product-card"
+                                     role="button"
+                                     tabindex="0"
+                                     data-product-id="<?= (int)$p['id'] ?>"
+                                     data-name="<?= e($p['name']) ?>"
+                                     data-category="<?= e($p['child_category_name'] ?? $p['parent_category_name'] ?? 'Menu') ?>"
+                                     data-code="<?= e($p['article_code']) ?>"
+                                     data-image="<?= (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))) ? base_url($p['image_path']) : '' ?>"
+                                     data-desc="<?= e($p['local_description'] ?? 'Freshly prepared with authentic Kaldis quality.') ?>"
+                                     data-price="<?= $displayPrice !== null ? ($isDollar ? '$' . number_format($displayPrice, 2) . ' ' . $priceSuffix : number_format($displayPrice, 2) . ' ' . $priceSuffix) : '' ?>"
+                                     data-vat="<?= $showVatLabel ? '1' : '0' ?>"
+                                     title="Tap to view <?= e($p['name']) ?>"
+                                >
                                     <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
                                         <div class="product-image-container">
                                             <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
@@ -410,56 +499,6 @@ foreach ($categories as $pCat) {
                                             <?= !empty($p['local_description']) ? e($p['local_description']) : 'Freshly prepared with authentic Kaldis quality.' ?>
                                         </p>
 
-                                        <?php
-                                        $vatRate = (float)($settings['vat_rate']['value'] ?? '1.20');
-                                        $displayPrice = null;
-                                        $isDollar = false;
-                                        $priceSuffix = 'ETB';
-                                        $showVatLabel = true;
-
-                                        // 1. Airport and Airport 2 branches -> Show airport_price with VAT Multiplier & dollar $ sign
-                                        if (!empty($isCurrentAirport)) {
-                                            $isDollar = true;
-                                            $showVatLabel = true;
-                                            $priceSuffix = 'USD';
-                                            if (!empty($p['airport_price']) && is_numeric($p['airport_price']) && (float)$p['airport_price'] > 0) {
-                                                $displayPrice = round((float)$p['airport_price'] * $vatRate, 2);
-                                            } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
-                                                $displayPrice = (float)$p['price'];
-                                            }
-                                        }
-                                        // 2. ECA branch -> Show eca_price
-                                        elseif (!empty($isCurrentEca)) {
-                                            $isDollar = false;
-                                            $priceSuffix = 'ETB';
-                                            if (!empty($p['eca_price']) && is_numeric($p['eca_price']) && (float)$p['eca_price'] > 0) {
-                                                $displayPrice = (float)$p['eca_price'];
-                                                $showVatLabel = false;
-                                            } elseif ($p['price'] !== null && (float)$p['price'] > 0) {
-                                                $displayPrice = (float)$p['price'];
-                                                $showVatLabel = true;
-                                            } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
-                                                $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
-                                                $showVatLabel = true;
-                                            } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
-                                                $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
-                                                $showVatLabel = true;
-                                            }
-                                        }
-                                        // 3. Standard branches
-                                        else {
-                                            $isDollar = false;
-                                            $priceSuffix = e($p['price_currency'] ?? 'ETB');
-                                            $showVatLabel = true;
-                                            if ($p['price'] !== null && (float)$p['price'] > 0) {
-                                                $displayPrice = (float)$p['price'];
-                                            } elseif (!empty($p['branches_price']) && is_numeric($p['branches_price']) && (float)$p['branches_price'] > 0) {
-                                                $displayPrice = round((float)$p['branches_price'] * $vatRate, 2);
-                                            } elseif (!empty($p['default_value']) && is_numeric($p['default_value']) && (float)$p['default_value'] > 0) {
-                                                $displayPrice = round((float)$p['default_value'] * $vatRate, 2);
-                                            }
-                                        }
-                                        ?>
                                         <div class="product-footer">
                                             <?php if ($showPrices && $displayPrice !== null): ?>
                                                 <div>
@@ -497,11 +536,70 @@ foreach ($categories as $pCat) {
                     <div class="mb-3 text-gold fs-1"><i class="bi bi-cup"></i></div>
                     <h4 class="fw-bold text-espresso mb-1">No Menu Items Found</h4>
                     <p class="text-muted small mb-3">No products matched your search or selected category.</p>
-                    <a href="<?= base_url('menu?branch=' . urlencode($branch['code'])) ?>" class="btn btn-gold rounded-pill px-4 btn-sm">
+                    <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" class="btn btn-gold rounded-pill px-4 btn-sm">
                         View All Categories
                     </a>
                 </div>
 
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         PRODUCT DETAIL MODAL (Pop-up on Announcement & Product Card Click)
+         ========================================================================= -->
+    <div class="modal fade" id="productDetailModal" tabindex="-1" aria-labelledby="productDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 460px;">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <!-- Modal Top: Image / Header -->
+                <div class="position-relative bg-espresso" style="min-height: 180px;">
+                    <div id="modalProductImgWrapper" class="w-100 text-center py-3 position-relative" style="background: #2C1810;">
+                        <img id="modalProductImg" src="" alt="" class="img-fluid rounded-3 shadow-sm" style="max-height: 220px; object-fit: contain; display: none;">
+                        <div id="modalProductImgPlaceholder" class="py-4 text-center" style="display: none;">
+                            <i class="bi bi-cup-hot display-3 text-gold opacity-75"></i>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-dark position-absolute top-0 end-0 m-3 rounded-circle d-flex align-items-center justify-content-center shadow" data-bs-dismiss="modal" aria-label="Close" style="width: 34px; height: 34px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.25);">
+                        <i class="bi bi-x-lg text-white"></i>
+                    </button>
+                    <div class="position-absolute bottom-0 start-0 m-3">
+                        <span id="modalProductCategoryBadge" class="badge bg-gold text-dark fw-bold rounded-pill px-3 py-1 extra-small shadow-sm">
+                            Menu Item
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Modal Body: Product Info -->
+                <div class="modal-body p-4 bg-white">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                            <h4 class="fw-bold text-espresso mb-1" id="modalProductName">Product Name</h4>
+                            <span class="badge bg-light text-muted border extra-small" id="modalProductCode">#0000</span>
+                        </div>
+                        <div class="text-end" id="modalPriceBlock">
+                            <div class="fs-4 fw-bold text-espresso lh-1" id="modalProductPrice">0.00 ETB</div>
+                            <span class="extra-small text-muted" id="modalProductVat">incl. VAT</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 border my-3">
+                        <div class="extra-small text-uppercase tracking-wider fw-bold text-muted mb-1">
+                            <i class="bi bi-info-circle me-1 text-gold"></i> Description
+                        </div>
+                        <p class="text-dark mb-0 small lh-base" id="modalProductDesc">
+                            Freshly prepared with authentic Kaldis quality.
+                        </p>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between pt-2 border-top">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small fw-semibold">
+                            <i class="bi bi-check-circle-fill me-1"></i> Available at this branch
+                        </span>
+                        <button type="button" class="btn btn-espresso rounded-pill px-4 btn-sm fw-semibold" data-bs-dismiss="modal">
+                            Back to Menu
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

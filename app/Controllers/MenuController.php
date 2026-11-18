@@ -25,7 +25,9 @@ class MenuController
             return;
         }
 
-        // Branch from query string or session
+        // Branch resolution:
+        // When visiting /menu directly without a ?branch= parameter, open the All Branches selection view.
+        // When a branch is specified (?branch=CODE), display that branch's menu.
         $changeBranch = Request::int('change_branch') === 1 || Request::str('branch') === 'select';
         $branchRepo   = new BranchRepository();
         $branch       = null;
@@ -34,22 +36,35 @@ class MenuController
             \App\Helpers\Session::remove('current_branch_code');
         } else {
             $rawBranch = Request::str('branch');
-            if ($rawBranch !== '') {
-                $branch = $branchRepo->resolveBranch($rawBranch);
-                $branchCode = $branch ? $branch['code'] : $rawBranch;
-                \App\Helpers\Session::set('current_branch_code', $branchCode);
-            } else {
-                $branchCode = (string)\App\Helpers\Session::get('current_branch_code', '');
-                if ($branchCode !== '') {
-                    $branch = $branchRepo->resolveBranch($branchCode);
+
+            // Support direct branch query without 'branch=' key
+            // (e.g. /menu?Betel Bicha Foq, /menu?Betel+Bicha+Foq, /menu?4 Kilo)
+            if ($rawBranch === '' && !empty($_SERVER['QUERY_STRING'])) {
+                $rawQuery = trim(urldecode($_SERVER['QUERY_STRING']));
+                $firstPart = trim(explode('&', $rawQuery)[0]);
+                if (!str_contains($firstPart, '=') && $firstPart !== '' && $firstPart !== 'select' && $firstPart !== 'change_branch') {
+                    $rawBranch = $firstPart;
                 }
+            }
+
+            if ($rawBranch !== '' && $rawBranch !== 'select') {
+                $branch = $branchRepo->resolveBranch($rawBranch);
+                if ($branch) {
+                    \App\Helpers\Session::set('current_branch_code', $branch['code']);
+                }
+            } else {
+                // Visiting /menu directly without branch parameter opens All Branches view
+                $branch = null;
+                \App\Helpers\Session::remove('current_branch_code');
             }
         }
 
         $branches = $branchRepo->getActive();
 
         // Categories
-        $categories = (new CategoryRepository())->getParentCategoriesWithChildren();
+        $categoryRepo   = new CategoryRepository();
+        $categories     = $categoryRepo->getParentCategoriesWithChildren();
+        $hiddenChildIds = !empty($branch['id']) ? $categoryRepo->getHiddenChildCategoryIdsForBranch((int)$branch['id']) : [];
 
         // Product filters
         $filters = ['is_visible' => 1, 'is_active_source' => 1];
@@ -84,6 +99,7 @@ class MenuController
         View::render('menu/index', [
             'title'          => $title,
             'categories'     => $categories,
+            'hiddenChildIds' => $hiddenChildIds,
             'products'       => $products,
             'announcements'  => $announcements,
             'branch'         => $branch,

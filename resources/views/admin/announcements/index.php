@@ -156,6 +156,9 @@
     </div>
 </div>
 
+<?php
+$branchMap = !empty($branches) ? array_column($branches, 'name', 'id') : [];
+?>
 <!-- ANNOUNCEMENTS TABLE -->
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
     <div class="card-header bg-white py-3 px-4 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -226,7 +229,31 @@
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if (!empty($ann['branch_name'])): ?>
+                                <?php 
+                                $tBranches = !empty($ann['target_branches']) ? json_decode((string)$ann['target_branches'], true) : null;
+                                if (is_array($tBranches) && !empty($tBranches)):
+                                    $bCount = count($tBranches);
+                                    if ($bCount === 1):
+                                        $singleId = (int)$tBranches[0];
+                                        $bName = $branchMap[$singleId] ?? $ann['branch_name'] ?? 'Branch #' . $singleId;
+                                ?>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2 py-1">
+                                            <i class="bi bi-shop me-1"></i><?= e($bName) ?>
+                                        </span>
+                                    <?php else: 
+                                        $bNames = [];
+                                        foreach ($tBranches as $tId) {
+                                            if (isset($branchMap[(int)$tId])) {
+                                                $bNames[] = $branchMap[(int)$tId];
+                                            }
+                                        }
+                                        $tooltipText = implode(', ', $bNames);
+                                    ?>
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2 py-1" title="<?= e($tooltipText) ?>" data-bs-toggle="tooltip">
+                                            <i class="bi bi-shop me-1"></i><?= $bCount ?> Branches
+                                        </span>
+                                    <?php endif; ?>
+                                <?php elseif (!empty($ann['branch_name'])): ?>
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill extra-small px-2 py-1">
                                         <i class="bi bi-shop me-1"></i><?= e($ann['branch_name']) ?>
                                     </span>
@@ -382,7 +409,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 2: Title, Product Link & Target Branch -->
+                    <!-- Row 2: Title & Searchable Product Link -->
                     <div class="row g-3 mb-3">
                         <div class="col-sm-5">
                             <label for="ann_title" class="form-label small fw-semibold text-espresso mb-1">
@@ -391,12 +418,23 @@
                             <input type="text" class="form-control" id="ann_title" name="title" required placeholder="e.g. Caramel Macchiato Launch">
                             <div class="form-text extra-small">Used for identification and admin reporting.</div>
                         </div>
-                        <div class="col-sm-4">
-                            <label for="ann_product_id" class="form-label small fw-semibold text-espresso mb-1">
-                                Link to Catalog Product <span class="text-muted fw-normal">(Optional)</span>
-                            </label>
-                            <select class="form-select" id="ann_product_id" name="product_id">
-                                <option value="">-- No specific product --</option>
+                        <div class="col-sm-7">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label for="ann_product_id" class="form-label small fw-semibold text-espresso mb-0">
+                                    Link to Catalog Product <span class="text-muted fw-normal">(Optional)</span>
+                                </label>
+                                <span id="productFilterCount" class="extra-small text-muted"></span>
+                            </div>
+                            <!-- Searchable Filter Input -->
+                            <div class="input-group input-group-sm mb-1">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" id="productSearchFilter" class="form-control border-start-0" placeholder="Type to search product name or article code..." autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary border-start-0" id="btnClearProductSearch" style="display: none;" title="Clear search">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <select class="form-select form-select-sm" id="ann_product_id" name="product_id" size="4" style="font-size: 0.85rem;">
+                                <option value="" selected>-- No specific product (General announcement) --</option>
                                 <?php foreach ($products as $p): ?>
                                     <?php 
                                         $pPrice = !empty($p['branches_price']) ? number_format((float)$p['branches_price'] * 1.20, 2) . ' ETB' : (!empty($p['default_value']) ? number_format((float)$p['default_value'] * 1.20, 2) . ' ETB' : '');
@@ -412,21 +450,44 @@
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text extra-small">Auto-pulls name, price, and image.</div>
+                            <div class="form-text extra-small">Select a product to auto-pull its name, verified price, and high-res image.</div>
                         </div>
-                        <div class="col-sm-3">
-                            <label for="ann_branch_id" class="form-label small fw-semibold text-espresso mb-1">
-                                Target Branch
+                    </div>
+
+                    <!-- Row 2.5: Multi-Branch Selection Checkboxes -->
+                    <div class="p-3 bg-light rounded-3 border mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <label class="form-label small fw-semibold text-espresso mb-0">
+                                <i class="bi bi-geo-alt-fill text-gold me-1"></i> Target Branches
                             </label>
-                            <select class="form-select" id="ann_branch_id" name="branch_id">
-                                <option value="">🌐 All Branches</option>
-                                <?php if (!empty($branches)): ?>
-                                    <?php foreach ($branches as $br): ?>
-                                        <option value="<?= (int)$br['id'] ?>"><?= e($br['name']) ?></option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </select>
-                            <div class="form-text extra-small">Shows only when branch selected.</div>
+                            <span class="badge bg-gold text-dark extra-small rounded-pill px-2 py-1" id="branchSelectionBadge">
+                                🌐 All Branches (Global)
+                            </span>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-2 pb-2 border-bottom">
+                            <input class="form-check-input" type="checkbox" id="branch_target_all" name="target_all" value="1" checked>
+                            <label class="form-check-label fw-bold extra-small text-espresso" for="branch_target_all">
+                                🌐 All Branches (Announcement appears across all locations)
+                            </label>
+                        </div>
+
+                        <div id="branchChecklistWrapper" class="row g-2 mt-1" style="max-height: 140px; overflow-y: auto;">
+                            <?php if (!empty($branches)): ?>
+                                <?php foreach ($branches as $br): ?>
+                                    <div class="col-sm-6 col-md-4">
+                                        <div class="form-check py-1 px-2 border rounded-2 bg-white branch-checkbox-card">
+                                            <input class="form-check-input branch-checkbox ms-0 me-2" type="checkbox" name="target_branches[]" value="<?= (int)$br['id'] ?>" id="branch_cb_<?= (int)$br['id'] ?>" data-name="<?= e($br['name']) ?>">
+                                            <label class="form-check-label extra-small text-dark fw-medium text-truncate d-inline-block" style="max-width: 170px;" for="branch_cb_<?= (int)$br['id'] ?>" title="<?= e($br['name']) ?>">
+                                                <?= e($br['name']) ?>
+                                            </label>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
+                        <div class="form-text extra-small mt-2 text-muted">
+                            Select one or multiple branches using checkboxes, or toggle "All Branches" to broadcast globally.
                         </div>
                     </div>
 
@@ -686,13 +747,104 @@ document.addEventListener('DOMContentLoaded', function () {
     const titleInput = document.getElementById('ann_title');
     const badgeInput = document.getElementById('ann_badge_text');
     const productSelect = document.getElementById('ann_product_id');
-    const branchSelect = document.getElementById('ann_branch_id');
+    const productSearchFilter = document.getElementById('productSearchFilter');
+    const btnClearProductSearch = document.getElementById('btnClearProductSearch');
+    const productFilterCount = document.getElementById('productFilterCount');
+
+    const branchTargetAll = document.getElementById('branch_target_all');
+    const branchCheckboxes = document.querySelectorAll('.branch-checkbox');
+    const branchSelectionBadge = document.getElementById('branchSelectionBadge');
+
     const messageInput = document.getElementById('ann_message');
     const startDateInput = document.getElementById('ann_start_date');
     const endDateInput = document.getElementById('ann_end_date');
     const durationInput = document.getElementById('ann_scroll_duration');
     const durationBadge = document.getElementById('durationValueBadge');
     const activeSwitch = document.getElementById('ann_is_active');
+
+    // ── Catalog Product Searchable Filter ───────────────────────────
+    if (productSearchFilter && productSelect) {
+        productSearchFilter.addEventListener('input', function () {
+            const query = this.value.toLowerCase().trim();
+            if (btnClearProductSearch) {
+                btnClearProductSearch.style.display = query ? 'inline-block' : 'none';
+            }
+
+            let matchCount = 0;
+            const options = Array.from(productSelect.options);
+            options.forEach((opt, idx) => {
+                if (idx === 0) {
+                    opt.hidden = false; // Always keep "No specific product" option
+                    return;
+                }
+                const name = (opt.getAttribute('data-name') || '').toLowerCase();
+                const code = (opt.getAttribute('data-code') || '').toLowerCase();
+                const text = opt.textContent.toLowerCase();
+
+                if (!query || name.includes(query) || code.includes(query) || text.includes(query)) {
+                    opt.hidden = false;
+                    opt.style.display = '';
+                    matchCount++;
+                } else {
+                    opt.hidden = true;
+                    opt.style.display = 'none';
+                }
+            });
+
+            if (productFilterCount) {
+                productFilterCount.textContent = query ? (matchCount + ' match' + (matchCount === 1 ? '' : 'es')) : '';
+            }
+        });
+
+        if (btnClearProductSearch) {
+            btnClearProductSearch.addEventListener('click', function () {
+                productSearchFilter.value = '';
+                this.style.display = 'none';
+                productSearchFilter.dispatchEvent(new Event('input'));
+                productSearchFilter.focus();
+            });
+        }
+    }
+
+    // ── Target Branches Checkboxes Management ────────────────────────
+    function updateBranchSelectionUI() {
+        if (!branchSelectionBadge) return;
+        const checkedBoxes = Array.from(branchCheckboxes).filter(cb => cb.checked);
+
+        if (branchTargetAll && branchTargetAll.checked) {
+            branchSelectionBadge.textContent = '🌐 All Branches (Global)';
+            branchSelectionBadge.className = 'badge bg-gold text-dark extra-small rounded-pill px-2 py-1';
+        } else if (checkedBoxes.length === 1) {
+            const name = checkedBoxes[0].getAttribute('data-name') || '1 Branch';
+            branchSelectionBadge.textContent = '📍 ' + name;
+            branchSelectionBadge.className = 'badge bg-primary text-white extra-small rounded-pill px-2 py-1';
+        } else if (checkedBoxes.length > 1) {
+            branchSelectionBadge.textContent = '📍 ' + checkedBoxes.length + ' Branches Selected';
+            branchSelectionBadge.className = 'badge bg-primary text-white extra-small rounded-pill px-2 py-1';
+        } else {
+            if (branchTargetAll) branchTargetAll.checked = true;
+            branchSelectionBadge.textContent = '🌐 All Branches (Global)';
+            branchSelectionBadge.className = 'badge bg-gold text-dark extra-small rounded-pill px-2 py-1';
+        }
+    }
+
+    if (branchTargetAll) {
+        branchTargetAll.addEventListener('change', function () {
+            if (this.checked) {
+                branchCheckboxes.forEach(cb => cb.checked = false);
+            }
+            updateBranchSelectionUI();
+        });
+    }
+
+    branchCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function () {
+            if (this.checked && branchTargetAll) {
+                branchTargetAll.checked = false;
+            }
+            updateBranchSelectionUI();
+        });
+    });
 
     const bgInput = document.getElementById('ann_bg_color');
     const textInput = document.getElementById('ann_text_color');
@@ -804,7 +956,13 @@ document.addEventListener('DOMContentLoaded', function () {
         form.reset();
         idInput.value = '0';
         modalTitle.textContent = 'Add New Product Announcement';
-        if (branchSelect) branchSelect.value = '';
+        if (productSearchFilter) {
+            productSearchFilter.value = '';
+            productSearchFilter.dispatchEvent(new Event('input'));
+        }
+        if (branchTargetAll) branchTargetAll.checked = true;
+        branchCheckboxes.forEach(cb => cb.checked = false);
+        updateBranchSelectionUI();
         bgInput.value = '#2C1810';
         textInput.value = '#FDF8EE';
         accentInput.value = '#C5A059';
@@ -828,8 +986,43 @@ document.addEventListener('DOMContentLoaded', function () {
             modalTitle.textContent = 'Edit Announcement: ' + (data.title || '');
             titleInput.value = data.title || '';
             badgeInput.value = data.badge_text || 'NEW PRODUCT';
+
+            if (productSearchFilter) {
+                productSearchFilter.value = '';
+                productSearchFilter.dispatchEvent(new Event('input'));
+            }
             productSelect.value = data.product_id || '';
-            if (branchSelect) branchSelect.value = data.branch_id || '';
+
+            // Handle branches checkboxes
+            branchCheckboxes.forEach(cb => cb.checked = false);
+            let hasSpecificBranches = false;
+
+            if (data.target_branches) {
+                try {
+                    const parsed = typeof data.target_branches === 'string' ? JSON.parse(data.target_branches) : data.target_branches;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        hasSpecificBranches = true;
+                        parsed.forEach(bId => {
+                            const cb = document.getElementById('branch_cb_' + bId);
+                            if (cb) cb.checked = true;
+                        });
+                    }
+                } catch (e) {}
+            }
+
+            if (!hasSpecificBranches && data.branch_id) {
+                const cb = document.getElementById('branch_cb_' + data.branch_id);
+                if (cb) {
+                    cb.checked = true;
+                    hasSpecificBranches = true;
+                }
+            }
+
+            if (branchTargetAll) {
+                branchTargetAll.checked = !hasSpecificBranches;
+            }
+            updateBranchSelectionUI();
+
             messageInput.value = data.message || '';
             startDateInput.value = data.start_date || '';
             endDateInput.value = data.end_date || '';

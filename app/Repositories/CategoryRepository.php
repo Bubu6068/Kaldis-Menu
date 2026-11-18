@@ -25,6 +25,33 @@ class CategoryRepository
     {
         $this->db = Database::local();
         $this->ensureImagePathColumn();
+        $this->ensureBranchChildCategoriesTable();
+    }
+
+    private function ensureBranchChildCategoriesTable(): void
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS `branch_child_categories` (
+                    `id` INT AUTO_INCREMENT PRIMARY KEY,
+                    `branch_id` INT NOT NULL,
+                    `child_category_id` INT NOT NULL,
+                    `is_available` TINYINT(1) NOT NULL DEFAULT 1,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY `uq_branch_child` (`branch_id`, `child_category_id`),
+                    INDEX `idx_branch` (`branch_id`),
+                    INDEX `idx_child` (`child_category_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ");
+        } catch (\Throwable $e) {
+            // Silently fall through
+        }
     }
 
     private function ensureImagePathColumn(): void
@@ -244,6 +271,124 @@ class CategoryRepository
         } catch (Throwable $e) {
             Logger::error("CategoryRepository::updateChildImage failed for id={$id}: " . $e->getMessage());
             return false;
+        }
+    }
+
+    // =========================================================================
+    // Branch Visibility (Hide by Branch)
+    // =========================================================================
+
+    /**
+     * Retrieves branch availability map grouped by child category ID.
+     *
+     * @return array<int, array<int, int>> [child_id => [branch_id => is_available]]
+     */
+    public function getBranchChildVisibilityMap(): array
+    {
+        try {
+            $rows = $this->db->query("
+                SELECT `child_category_id`, `branch_id`, `is_available`
+                FROM `branch_child_categories`
+            ")->fetchAll(PDO::FETCH_ASSOC);
+
+            $map = [];
+            foreach ($rows as $row) {
+                $cId = (int)$row['child_category_id'];
+                $bId = (int)$row['branch_id'];
+                $map[$cId][$bId] = (int)$row['is_available'];
+            }
+            return $map;
+        } catch (Throwable $e) {
+            Logger::error("CategoryRepository::getBranchChildVisibilityMap failed: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Returns count of hidden branches for each child category.
+     *
+     * @return array<int, int> [child_id => hidden_branch_count]
+     */
+    public function getHiddenBranchCounts(): array
+    {
+        try {
+            $rows = $this->db->query("
+                SELECT `child_category_id`, COUNT(*) as `hidden_count`
+                FROM `branch_child_categories`
+                WHERE `is_available` = 0
+                GROUP BY `child_category_id`
+            ")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            return array_map('intval', $rows);
+        } catch (Throwable $e) {
+            Logger::error("CategoryRepository::getHiddenBranchCounts failed: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Saves branch visibility settings for a single child category across branches.
+     *
+     * @param int                 $childId          Local child_categories.id
+     * @param array<int, int|bool> $branchVisibility Map of [branch_id => 1 (visible) | 0 (hidden)]
+     * @return bool
+     */
+    public function saveBranchChildVisibility(int $childId, array $branchVisibility): bool
+    {
+        if ($childId <= 0 || empty($branchVisibility)) {
+            return false;
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO `branch_child_categories` (`branch_id`, `child_category_id`, `is_available`, `updated_at`)
+                VALUES (:branch_id, :child_id, :is_available, NOW())
+                ON DUPLICATE KEY UPDATE `is_available` = VALUES(`is_available`), `updated_at` = NOW()
+            ");
+
+            $this->db->beginTransaction();
+            foreach ($branchVisibility as $branchId => $available) {
+                $stmt->execute([
+                    ':branch_id'     => (int)$branchId,
+                    ':child_id'      => $childId,
+                    ':is_available'  => (int)$available,
+                ]);
+            }
+            $this->db->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            Logger::error("CategoryRepository::saveBranchChildVisibility failed for childId={$childId}: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Returns list of child category IDs that are marked as hidden (is_available = 0)
+     * for a given branch ID.
+     *
+     * @param int|null $branchId
+     * @return array<int>
+     */
+    public function getHiddenChildCategoryIdsForBranch(?int $branchId): array
+    {
+        if (empty($branchId)) {
+            return [];
+        }
+
+        try {
+            $stmt = $this->db->prepare("
+                SELECT `child_category_id`
+                FROM `branch_child_categories`
+                WHERE `branch_id` = :branch_id AND `is_available` = 0
+            ");
+            $stmt->execute([':branch_id' => $branchId]);
+            return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+        } catch (Throwable $e) {
+            Logger::error("CategoryRepository::getHiddenChildCategoryIdsForBranch failed: " . $e->getMessage());
+            return [];
         }
     }
 }

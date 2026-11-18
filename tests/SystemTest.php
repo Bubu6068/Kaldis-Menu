@@ -53,6 +53,7 @@ class SystemTest
         $this->testImportServiceHandling();
         $this->testSettingsRepository();
         $this->testAnnouncementRepository();
+        $this->testHideByBranch();
         $this->testCsrfProtection();
 
         echo "\n------------------------------------------------------\n";
@@ -90,7 +91,8 @@ class SystemTest
     {
         $expected = [
             'parent_categories', 'child_categories', 'products', 'branches',
-            'branch_products', 'qr_codes', 'users', 'settings', 'import_logs', 'audit_logs', 'feedbacks', 'announcements'
+            'branch_products', 'qr_codes', 'users', 'settings', 'import_logs', 'audit_logs', 'feedbacks', 'announcements',
+            'branch_child_categories'
         ];
         $tables = Database::local()->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
         
@@ -253,6 +255,52 @@ class SystemTest
 
         $deleted = $repo->delete($id);
         $this->assert("Announcement Deleted Cleanly", $deleted);
+
+        // Test multi-branch targeting
+        $multiBranchId = $repo->create([
+            'title'           => 'Multi Branch Announcement',
+            'badge_text'      => 'SPECIAL OFFER',
+            'message'         => 'Only at selected branches',
+            'target_branches' => json_encode([100, 200]),
+            'is_active'       => 1,
+        ]);
+        $this->assert("Multi-Branch Announcement Created", $multiBranchId > 0);
+
+        $match100 = $repo->findActiveForDisplay(['id' => 100, 'name' => 'Branch 100', 'code' => 'B100']);
+        $hasMatch100 = !empty(array_filter($match100, fn($a) => (int)($a['id'] ?? 0) === $multiBranchId));
+        $this->assert("Announcement Visible for Targeted Branch (100)", $hasMatch100);
+
+        $match300 = $repo->findActiveForDisplay(['id' => 300, 'name' => 'Branch 300', 'code' => 'B300']);
+        $hasMatch300 = !empty(array_filter($match300, fn($a) => (int)($a['id'] ?? 0) === $multiBranchId));
+        $this->assert("Announcement Hidden for Non-Targeted Branch (300)", !$hasMatch300);
+
+        $repo->delete($multiBranchId);
+    }
+
+    private function testHideByBranch(): void
+    {
+        $repo = new CategoryRepository();
+        $testChildId = 16; // e.g. Beer / Cocktails
+        $testBranchId = 9999;
+
+        // 1. Save branch visibility: set to 0 (hidden) for branch 9999
+        $ok = $repo->saveBranchChildVisibility($testChildId, [$testBranchId => 0, 8888 => 1]);
+        $this->assert("Branch Child Visibility Saved", $ok);
+
+        // 2. Verify getHiddenChildCategoryIdsForBranch returns this category
+        $hiddenIds = $repo->getHiddenChildCategoryIdsForBranch($testBranchId);
+        $this->assert("Hidden Child Categories Found for Branch", in_array($testChildId, $hiddenIds, true));
+
+        // 3. Verify branchVisMap contains the entry
+        $map = $repo->getBranchChildVisibilityMap();
+        $this->assert("Branch Visibility Map Populated", isset($map[$testChildId][$testBranchId]) && $map[$testChildId][$testBranchId] === 0);
+
+        // 4. Verify hidden counts reflects this category
+        $counts = $repo->getHiddenBranchCounts();
+        $this->assert("Hidden Branch Counts Calculated", ($counts[$testChildId] ?? 0) >= 1);
+
+        // Clean up test rows
+        Database::local()->exec("DELETE FROM `branch_child_categories` WHERE `branch_id` IN (9999, 8888)");
     }
 
     private function testCsrfProtection(): void

@@ -53,9 +53,10 @@ Router::post('/admin/announcements/{id}/delete',     [AdminController::class, 'a
 Router::post('/admin/announcements/settings',        [AdminController::class, 'announcementSettingsSave']);
 
 // ── Admin — Categories ──────────────────────────────────────────────────────
-Router::get('/admin/categories',       [AdminController::class, 'categories']);
-Router::post('/admin/categories/toggle',[AdminController::class, 'categoryToggle']);
-Router::post('/admin/categories/image', [AdminController::class, 'categoryImageUpload']);
+Router::get('/admin/categories',                   [AdminController::class, 'categories']);
+Router::post('/admin/categories/toggle',            [AdminController::class, 'categoryToggle']);
+Router::post('/admin/categories/branch-visibility', [AdminController::class, 'categoryBranchVisibility']);
+Router::post('/admin/categories/image',             [AdminController::class, 'categoryImageUpload']);
 
 // ── Admin — Branches ────────────────────────────────────────────────────────
 Router::get('/admin/branches',             [AdminController::class, 'branches']);

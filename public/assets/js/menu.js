@@ -209,4 +209,207 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
     }
 
+    /* ==========================================================================
+       5. Product Detail Modal & Announcement Click Interaction
+       ========================================================================== */
+    const productModalEl = document.getElementById('productDetailModal');
+    let productDetailModal = null;
+    if (productModalEl && typeof bootstrap !== 'undefined') {
+        productDetailModal = new bootstrap.Modal(productModalEl);
+    }
+
+    const modalImg = document.getElementById('modalProductImg');
+    const modalImgPlaceholder = document.getElementById('modalProductImgPlaceholder');
+    const modalCategoryBadge = document.getElementById('modalProductCategoryBadge');
+    const modalName = document.getElementById('modalProductName');
+    const modalCode = document.getElementById('modalProductCode');
+    const modalPrice = document.getElementById('modalProductPrice');
+    const modalVat = document.getElementById('modalProductVat');
+    const modalDesc = document.getElementById('modalProductDesc');
+
+    function showProductDetail(data) {
+        if (!productDetailModal) return;
+
+        if (modalName) modalName.textContent = data.name || 'Featured Product';
+        if (modalCode) {
+            modalCode.textContent = data.code ? '#' + data.code : '';
+            modalCode.style.display = data.code ? 'inline-block' : 'none';
+        }
+        if (modalCategoryBadge) {
+            modalCategoryBadge.textContent = data.category || data.badge || 'Kaldis Special';
+        }
+        if (modalDesc) {
+            modalDesc.textContent = data.desc || data.message || 'Freshly prepared with authentic Kaldis quality.';
+        }
+
+        if (modalPrice) {
+            if (data.price) {
+                modalPrice.textContent = data.price;
+                modalPrice.style.display = 'block';
+                if (modalVat) modalVat.style.display = (data.vat === '0' || data.vat === false) ? 'none' : 'block';
+            } else {
+                modalPrice.textContent = 'Available';
+                modalPrice.style.display = 'block';
+                if (modalVat) modalVat.style.display = 'none';
+            }
+        }
+
+        if (modalImg && modalImgPlaceholder) {
+            if (data.image) {
+                modalImg.src = data.image;
+                modalImg.alt = data.name || 'Product Image';
+                modalImg.style.display = 'inline-block';
+                modalImgPlaceholder.style.display = 'none';
+            } else {
+                modalImg.src = '';
+                modalImg.style.display = 'none';
+                modalImgPlaceholder.style.display = 'block';
+            }
+        }
+
+        productDetailModal.show();
+    }
+
+    // Announcement banner item click: navigate to child category and display product
+    document.querySelectorAll('.kaldis-moving-banner-item').forEach(item => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            const pId = this.getAttribute('data-product-id');
+            const targetChildId = parseInt(this.getAttribute('data-child-id') || '0', 10);
+            const navUrl = this.getAttribute('data-nav-url');
+            const currentParams = new URLSearchParams(window.location.search);
+            const currentChildId = parseInt(currentParams.get('child') || '0', 10);
+
+            // If product has a child category and user is not currently in that child category,
+            // navigate directly to that child category page
+            if (navUrl && targetChildId > 0 && targetChildId !== currentChildId) {
+                window.location.href = navUrl;
+                return;
+            }
+
+            const code = (this.getAttribute('data-code') || '').toLowerCase();
+            const fallbackData = {
+                name: this.getAttribute('data-name') || '',
+                price: this.getAttribute('data-price') || '',
+                code: this.getAttribute('data-code') || '',
+                image: this.getAttribute('data-image') || '',
+                badge: this.getAttribute('data-badge') || 'NEW PRODUCT',
+                desc: this.getAttribute('data-desc') || this.getAttribute('data-message') || '',
+                category: 'New Announcement'
+            };
+
+            let targetCardCol = null;
+            if (pId) {
+                targetCardCol = document.getElementById('prod-card-' + pId) || document.querySelector(`.product-card-col[data-product-id="${pId}"]`);
+            }
+            if (!targetCardCol && code) {
+                targetCardCol = document.querySelector(`.product-card-col[data-code="${code}"]`);
+            }
+
+            if (targetCardCol) {
+                const card = targetCardCol.querySelector('.product-card');
+                const cardData = {
+                    name: card ? card.getAttribute('data-name') : fallbackData.name,
+                    price: card ? card.getAttribute('data-price') : fallbackData.price,
+                    code: card ? card.getAttribute('data-code') : fallbackData.code,
+                    image: card ? card.getAttribute('data-image') : fallbackData.image,
+                    category: card ? card.getAttribute('data-category') : 'Featured Item',
+                    desc: card ? card.getAttribute('data-desc') : fallbackData.desc,
+                    vat: card ? card.getAttribute('data-vat') : '1'
+                };
+
+                // Switch to products section if currently on categories explore view
+                if (categoryCardsSection) categoryCardsSection.style.display = 'none';
+                if (productItemsSection) productItemsSection.style.display = 'block';
+
+                // Ensure the target product card is visible (in case filtered by category)
+                targetCardCol.style.display = '';
+
+                // Scroll smoothly to target product
+                setTimeout(() => {
+                    targetCardCol.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    targetCardCol.classList.add('product-card-highlight');
+                    setTimeout(() => {
+                        targetCardCol.classList.remove('product-card-highlight');
+                    }, 4000);
+                }, 150);
+
+                // Open product popup modal
+                showProductDetail(cardData);
+            } else if (navUrl) {
+                // If not in DOM but has target URL, navigate to it
+                window.location.href = navUrl;
+            } else {
+                // If product is not directly in the DOM, open modal with announcement data
+                showProductDetail(fallbackData);
+            }
+        });
+
+        // Keyboard accessibility (Enter or Space)
+        item.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    });
+
+    // Auto-focus and open product if &product=ID is present in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetProductId = urlParams.get('product');
+    if (targetProductId) {
+        setTimeout(() => {
+            const cardCol = document.getElementById('prod-card-' + targetProductId)
+                || document.querySelector(`.product-card-col[data-product-id="${targetProductId}"]`);
+            if (cardCol) {
+                cardCol.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                cardCol.classList.add('product-card-highlight');
+                setTimeout(() => {
+                    cardCol.classList.remove('product-card-highlight');
+                }, 4000);
+
+                const card = cardCol.querySelector('.product-card');
+                if (card) {
+                    showProductDetail({
+                        name: card.getAttribute('data-name'),
+                        price: card.getAttribute('data-price'),
+                        code: card.getAttribute('data-code'),
+                        image: card.getAttribute('data-image'),
+                        category: card.getAttribute('data-category'),
+                        desc: card.getAttribute('data-desc'),
+                        vat: card.getAttribute('data-vat')
+                    });
+                }
+            }
+        }, 300);
+    }
+
+    // Product cards click: open product detail modal
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.addEventListener('click', function (e) {
+            // Ignore if clicking on external link or button inside card
+            if (e.target.closest('a') || e.target.closest('button')) {
+                return;
+            }
+            const data = {
+                name: this.getAttribute('data-name') || '',
+                price: this.getAttribute('data-price') || '',
+                code: this.getAttribute('data-code') || '',
+                image: this.getAttribute('data-image') || '',
+                category: this.getAttribute('data-category') || 'Menu',
+                desc: this.getAttribute('data-desc') || '',
+                vat: this.getAttribute('data-vat') || '1'
+            };
+            showProductDetail(data);
+        });
+
+        card.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                this.click();
+            }
+        });
+    });
+
 });
