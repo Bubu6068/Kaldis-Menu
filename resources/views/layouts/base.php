@@ -106,9 +106,9 @@
                     <i class="bi bi-cup-hot-fill text-gold" style="font-size: 1.1rem;"></i>
                 </div>
             <?php endif; ?>
-            <p class="mb-1 fw-semibold text-espresso">Kaldis Coffee PLC</p>
-            <p class="text-muted small mb-2">The Birthplace of Coffee &middot; Crafted with Passion in Ethiopia</p>
-            <p class="text-muted extra-small mb-0">&copy; <?= date('Y') ?> Kaldis Coffee PLC. All rights reserved.</p>
+            <p class="mb-1 fw-semibold text-gold" style="color: var(--kaldis-gold) !important;">Kaldis Coffee PLC</p>
+            <p class="small mb-2 text-gold" style="color: var(--kaldis-gold) !important;">Let's meet at Kaldi's &middot; ካልዲስ እንገናኝ</p>
+            <p class="extra-small mb-0 text-gold" style="color: var(--kaldis-gold) !important;">&copy; <?= date('Y') ?> Kaldis Coffee PLC. All rights reserved.</p>
         </div>
     </footer>
 
