@@ -36,25 +36,52 @@ class Router
         $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
         $rawUri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
-        // Strip the sub-directory or /public prefix so routes are always relative.
-        // Handles: /menu, /public/menu, /kaldis-menu/menu, /kaldis-menu/public/menu
-        $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/\\');
+        // Strip the sub-directory, /public, or /index.php prefix so routes are always relative.
+        // Handles: /menu, /public/menu, /kaldis-menu/menu, /kaldis-menu/public/menu, /index.php/menu
+        $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/'));
+        if ($scriptDir === '.') {
+            $scriptDir = '';
+        }
+        $scriptDir = rtrim($scriptDir, '/');
+
         $path = $rawUri;
 
-        if ($scriptDir !== '' && $scriptDir !== '/' && str_starts_with($path, $scriptDir)) {
+        if ($scriptDir !== '' && str_starts_with($path, $scriptDir)) {
             $path = substr($path, strlen($scriptDir));
         } else {
-            $parentDir = rtrim(dirname($scriptDir), '/\\');
-            if ($parentDir !== '' && $parentDir !== '/' && str_starts_with($path, $parentDir)) {
-                $path = substr($path, strlen($parentDir));
+            if (str_ends_with($scriptDir, '/public')) {
+                $baseProjectDir = substr($scriptDir, 0, -7);
+                if ($baseProjectDir !== '' && str_starts_with($path, $baseProjectDir)) {
+                    $path = substr($path, strlen($baseProjectDir));
+                }
             }
         }
 
-        // Also strip leading /public or /public/ if web root is the parent folder
+        // Also detect if project folder name appears at start of $path (e.g. /kaldis-menu)
+        if (defined('BASE_PATH')) {
+            $baseFolder = '/' . basename(BASE_PATH);
+            if (str_starts_with($path, $baseFolder . '/')) {
+                $path = substr($path, strlen($baseFolder));
+            } elseif ($path === $baseFolder) {
+                $path = '/';
+            }
+        }
+
+        // Strip leading /public/ or /public
         if (str_starts_with($path, '/public/')) {
             $path = substr($path, 7);
         } elseif ($path === '/public') {
             $path = '/';
+        }
+
+        // Strip index.php
+        if (str_starts_with($path, '/index.php/')) {
+            $path = substr($path, 10);
+        } elseif ($path === '/index.php' || str_ends_with($path, '/index.php')) {
+            $path = substr($path, 0, -10);
+            if ($path === '') {
+                $path = '/';
+            }
         }
 
         $path = '/' . ltrim($path, '/');
