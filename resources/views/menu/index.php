@@ -106,7 +106,9 @@ foreach ($categories as $pCat) {
                     </div>
                 <?php endif; ?>
 
-                <h1 class="branch-hero-title mb-1"><?= e($settings['menu_title']['value'] ?? 'Kaldis Coffee') ?></h1>
+                <?php if (empty($logoUrl)): ?>
+                    <h1 class="branch-hero-title mb-1"><?= e($settings['menu_title']['value'] ?? 'Kaldis Coffee') ?></h1>
+                <?php endif; ?>
                 <div class="branch-hero-subtitle mb-4">SELECT YOUR NEAREST BRANCH</div>
 
                 <!-- Live Branch Search Input -->

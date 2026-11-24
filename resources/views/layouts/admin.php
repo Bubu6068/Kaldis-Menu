@@ -26,8 +26,8 @@
                         $adminHasCustomLogo = !empty($adminCustomLogo) && file_exists(BASE_PATH . '/public/' . ltrim($adminCustomLogo, '/'));
                     ?>
                     <?php if ($adminHasCustomLogo): ?>
-                        <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-white" style="width: 36px; height: 36px; flex-shrink: 0;">
-                            <img src="<?= base_url($adminCustomLogo) ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                        <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-transparent" style="width: 36px; height: 36px; flex-shrink: 0; padding: 0;">
+                            <img src="<?= base_url($adminCustomLogo) ?>" alt="Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                         </div>
                     <?php else: ?>
                         <div class="brand-crest" style="width: 36px; height: 36px;">

@@ -53,11 +53,11 @@
             <div class="d-flex align-items-center justify-content-between">
                 <a href="<?= base_url('menu?change_branch=1') ?>" class="text-decoration-none d-flex align-items-center gap-2">
                     <?php if ($hasCustomLogo): ?>
-                        <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-white" style="width: 44px; height: 44px; border: 2px solid #c69214; padding: 2px;">
-                            <img src="<?= base_url($customLogo) ?>" alt="Kaldis Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+                        <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm d-flex align-items-center justify-content-center bg-transparent" style="width: 44px; height: 44px; border: 2px solid #c69214; padding: 0;">
+                            <img src="<?= base_url($customLogo) ?>" alt="Kaldis Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                         </div>
                     <?php else: ?>
-                        <div class="brand-crest">
+                        <div class="brand-crest" style="width: 44px; height: 44px;">
                             <i class="bi bi-cup-hot-fill text-gold"></i>
                         </div>
                     <?php endif; ?>
@@ -98,8 +98,8 @@
                 </a>
             </div>
             <?php if ($hasCustomLogo): ?>
-                <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm mx-auto mb-2 d-flex align-items-center justify-content-center bg-white" style="width: 48px; height: 48px; border: 2px solid #c69214; padding: 2px;">
-                    <img src="<?= base_url($customLogo) ?>" alt="Kaldis Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+                <div class="brand-logo-wrap rounded-circle overflow-hidden shadow-sm mx-auto mb-2 d-flex align-items-center justify-content-center bg-transparent" style="width: 48px; height: 48px; border: 2px solid #c69214; padding: 0;">
+                    <img src="<?= base_url($customLogo) ?>" alt="Kaldis Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
                 </div>
             <?php else: ?>
                 <div class="brand-crest mx-auto mb-2" style="width: 36px; height: 36px;">

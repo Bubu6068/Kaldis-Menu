@@ -163,18 +163,19 @@ body.kaldis-app {
 }
 
 .branch-hero-logo {
-    width: 168px;
-    height: 168px;
+    width: 72px;
+    height: 72px;
     border-radius: 50%;
-    background: #ffffff;
+    background: transparent;
     border: 2.5px solid var(--kaldis-gold);
-    padding: 3px;
+    padding: 0;
     margin: 0 auto 0.85rem;
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
     transition: transform 0.25s ease;
+    overflow: hidden;
 }
 
 .branch-hero-logo:hover {
@@ -184,8 +185,21 @@ body.kaldis-app {
 .branch-hero-logo-img {
     width: 100%;
     height: 100%;
-    object-fit: contain;
+    object-fit: cover;
     border-radius: 50%;
+    display: block;
+}
+
+.brand-crest {
+    border-radius: 50%;
+    border: 2px solid var(--kaldis-gold);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--kaldis-gold);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .branch-hero-title {
@@ -404,17 +418,18 @@ body.kaldis-app {
     height: 78px;
     border-radius: 50%;
     border: 3px solid var(--kaldis-gold);
-    background: #ffffff;
-    padding: 3px;
-    object-fit: contain;
+    background: transparent;
+    padding: 0;
+    object-fit: cover;
     display: block;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
 }
 
 .menu-header-logo-badge:hover {
     transform: scale(1.08);
-    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 6px 22px rgba(187, 37, 37, 0.4);
 }
 
 .menu-search-box {
@@ -1116,8 +1131,8 @@ footer a,
 
 @media (max-width: 576px) {
     .menu-header-logo-badge {
-        width: 666px;
-        height: 666px;
+        width: 75px;
+        height: 75px;
     }
 
     .kaldis-moving-banner-inner {
