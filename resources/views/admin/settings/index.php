@@ -36,6 +36,55 @@
                         </div>
                     </div>
 
+                    <!-- Hero Banner Slideshow Images (Movable Multiple Images) -->
+                    <?php
+                        $heroBanners = [];
+                        if (!empty($settings['hero_banner_images']['value'])) {
+                            $decodedBanners = json_decode((string)$settings['hero_banner_images']['value'], true);
+                            if (is_array($decodedBanners)) {
+                                $heroBanners = $decodedBanners;
+                            }
+                        }
+                    ?>
+                    <div class="mb-4 p-3 bg-light rounded-3 border">
+                        <label class="form-label small fw-bold text-espresso mb-1">
+                            <i class="bi bi-images text-gold me-1"></i> Hero Banner Slideshow (Movable Images)
+                        </label>
+                        <p class="text-muted extra-small mb-3">
+                            Upload one or multiple images for the moving hero banner at the top of the menu. When multiple images are added, they automatically slide with a smooth animated transition.
+                        </p>
+
+                        <!-- Currently Active Banner Images -->
+                        <?php if (!empty($heroBanners)): ?>
+                            <label class="form-label extra-small fw-semibold text-espresso mb-2">Current Active Banner Images:</label>
+                            <div class="d-flex flex-wrap gap-3 mb-3">
+                                <?php foreach ($heroBanners as $bIndex => $bPath): ?>
+                                    <div class="position-relative border rounded-3 p-1 bg-white shadow-sm" style="width: 140px;">
+                                        <div style="height: 75px; overflow: hidden; border-radius: 6px;">
+                                            <img src="<?= base_url($bPath) ?>" alt="Banner <?= $bIndex + 1 ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                                        </div>
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" name="remove_hero_banners[]" value="<?= e($bPath) ?>" id="del_banner_<?= $bIndex ?>">
+                                            <label class="form-check-label extra-small text-danger fw-semibold" for="del_banner_<?= $bIndex ?>" style="font-size: 0.72rem;">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </label>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-info py-2 px-3 extra-small mb-3">
+                                <i class="bi bi-info-circle me-1"></i> Currently using default café lifestyle images. Upload your custom images below to personalize the movable banner.
+                            </div>
+                        <?php endif; ?>
+
+                        <div>
+                            <label for="hero_banner_uploads" class="form-label extra-small fw-semibold text-espresso">Upload New Banner Images (Select one or multiple)</label>
+                            <input type="file" class="form-control form-control-sm" id="hero_banner_uploads" name="hero_banner_uploads[]" multiple accept="image/png,image/jpeg,image/webp">
+                            <div class="form-text extra-small">Supported formats: JPG, PNG, WebP. Multiple files can be selected at once.</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label for="menu_title" class="form-label small fw-semibold text-espresso">Menu Title</label>
                         <input type="text" class="form-control" id="menu_title" name="menu_title" value="<?= e($settings['menu_title']['value'] ?? 'Kaldis Coffee') ?>" required>

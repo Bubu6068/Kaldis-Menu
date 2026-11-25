@@ -235,14 +235,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (modalName) modalName.textContent = data.name || 'Featured Product';
         if (modalCode) {
-            modalCode.textContent = data.code ? '#' + data.code : '';
-            modalCode.style.display = data.code ? 'inline-block' : 'none';
+            modalCode.style.display = 'none';
         }
         if (modalCategoryBadge) {
             modalCategoryBadge.textContent = data.category || data.badge || 'Kaldis Special';
         }
         if (modalDesc) {
-            modalDesc.textContent = data.desc || data.message || 'Freshly prepared with authentic Kaldis quality.';
+            const desc = (data.desc || data.message || '').trim();
+            modalDesc.textContent = desc;
+            const descBox = document.getElementById('modalProductDescBox');
+            if (descBox) {
+                descBox.style.display = desc ? 'block' : 'none';
+            }
         }
 
         if (modalPrice) {

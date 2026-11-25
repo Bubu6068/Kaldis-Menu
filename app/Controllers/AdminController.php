@@ -846,6 +846,57 @@ class AdminController
             $kvp['custom_logo'] = '';
         }
 
+        // Handle Hero Banner Slideshow Images (Multiple / Movable)
+        $existingBannersJson = $this->settingsRepo->get('hero_banner_images', '[]');
+        $currentBanners = json_decode((string)$existingBannersJson, true);
+        if (!is_array($currentBanners)) {
+            $currentBanners = [];
+        }
+
+        // Process removals of existing banner images
+        $removeBanners = Request::post('remove_hero_banners');
+        if (is_array($removeBanners)) {
+            $currentBanners = array_values(array_filter($currentBanners, function ($path) use ($removeBanners) {
+                return !in_array($path, $removeBanners, true);
+            }));
+        }
+
+        // Process new banner uploads
+        if (!empty($_FILES['hero_banner_uploads']['name']) && is_array($_FILES['hero_banner_uploads']['name'])) {
+            $bannerUploadDir = is_dir(BASE_PATH . '/public') 
+                ? BASE_PATH . '/public/uploads/banners/' 
+                : BASE_PATH . '/uploads/banners/';
+
+            if (!is_dir($bannerUploadDir)) {
+                @mkdir($bannerUploadDir, 0755, true);
+            }
+
+            $allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            $fileCount = count($_FILES['hero_banner_uploads']['name']);
+
+            for ($i = 0; $i < $fileCount; $i++) {
+                $tmpName = $_FILES['hero_banner_uploads']['tmp_name'][$i] ?? '';
+                $name    = $_FILES['hero_banner_uploads']['name'][$i] ?? '';
+                $error   = $_FILES['hero_banner_uploads']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+
+                if ($error === UPLOAD_ERR_OK && is_uploaded_file($tmpName)) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $mime  = finfo_file($finfo, $tmpName);
+                    finfo_close($finfo);
+
+                    if (in_array($mime, $allowedTypes, true)) {
+                        $ext = pathinfo($name, PATHINFO_EXTENSION) ?: 'jpg';
+                        $bannerFilename = 'hero_' . time() . '_' . substr(md5(uniqid((string)mt_rand(), true)), 0, 6) . '.' . strtolower($ext);
+                        if (move_uploaded_file($tmpName, $bannerUploadDir . $bannerFilename)) {
+                            $currentBanners[] = 'uploads/banners/' . $bannerFilename;
+                        }
+                    }
+                }
+            }
+        }
+
+        $kvp['hero_banner_images'] = json_encode(array_values($currentBanners));
+
         $this->settingsRepo->setMany($kvp);
         AuditLog::record('settings_updated', 'settings', null, $kvp);
 

@@ -198,60 +198,112 @@ foreach ($categories as $pCat) {
          SCREENSHOT 2: EXPLORE MENU & CATEGORIES VIEW
          ==================================================================== -->
     <div class="menu-view-wrapper">
-        <!-- Hero Header -->
-        <section class="menu-hero">
-            <div class="container" style="max-width: 820px;">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div class="menu-hero-left">
-                        <?php
-                            $currNameLower = !empty($branch['name']) ? strtolower(trim($branch['name'])) : '';
-                            $currCodeLower = !empty($branch['code']) ? strtolower(trim($branch['code'])) : '';
-                            $isCurrentAirport = ($currNameLower === 'airport' || $currNameLower === 'airport 2' || str_starts_with($currNameLower, 'airport') || in_array($currCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
-                            $isCurrentEca = ($currNameLower === 'eca' || str_starts_with($currNameLower, 'eca ') || in_array($currCodeLower, ['43492', 'eca'], true));
-                        ?>
-                        <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
-                            <h1 class="menu-branch-title mb-0"><?= e($branch['name']) ?></h1>
-                            <?php if ($isCurrentAirport): ?>
-                                <span class="badge bg-gold text-dark extra-small fw-bold px-2 py-1 rounded-pill">
-                                    <i class="bi bi-currency-dollar me-1"></i>USD Menu
-                                </span>
-                            <?php elseif ($isCurrentEca): ?>
-                                <span class="badge bg-gold text-dark extra-small fw-bold px-2 py-1 rounded-pill">
-                                    <i class="bi bi-tag-fill me-1"></i>ECA Menu
-                                </span>
-                            <?php endif; ?>
+        <?php
+            $currNameLower = !empty($branch['name']) ? strtolower(trim($branch['name'])) : '';
+            $currCodeLower = !empty($branch['code']) ? strtolower(trim($branch['code'])) : '';
+            $isCurrentAirport = ($currNameLower === 'airport' || $currNameLower === 'airport 2' || str_starts_with($currNameLower, 'airport') || in_array($currCodeLower, ['43516', '43532', 'airport', 'airport 2', 'airport_2', 'airport-2'], true));
+            $isCurrentEca = ($currNameLower === 'eca' || str_starts_with($currNameLower, 'eca ') || in_array($currCodeLower, ['43492', 'eca'], true));
+
+            // Resolve Hero Banner Images (Configured by admin, multiple movable images)
+            $heroBannerImages = [];
+            if (!empty($settings['hero_banner_images']['value'])) {
+                $decodedBanners = json_decode((string)$settings['hero_banner_images']['value'], true);
+                if (is_array($decodedBanners)) {
+                    foreach ($decodedBanners as $bPath) {
+                        $clean = ltrim($bPath, '/');
+                        if (file_exists(BASE_PATH . '/public/' . $clean)) {
+                            $heroBannerImages[] = base_url($clean);
+                        }
+                    }
+                }
+            }
+
+            // Default slides if none uploaded by admin yet
+            if (empty($heroBannerImages)) {
+                $defaultSlideCandidates = [
+                    'assets/images/menu-hero-1.jpg',
+                    'assets/images/menu-hero-2.jpg',
+                    'assets/images/menu-hero-3.jpg',
+                    'assets/images/menu-hero-clean.jpg',
+                ];
+                foreach ($defaultSlideCandidates as $candidate) {
+                    if (file_exists(BASE_PATH . '/public/' . $candidate)) {
+                        $heroBannerImages[] = asset_url($candidate);
+                    }
+                }
+            }
+            if (empty($heroBannerImages)) {
+                $heroBannerImages[] = asset_url('assets/images/menu-hero-clean.jpg');
+            }
+        ?>
+
+        <!-- ====================================================================
+             1. Movable Hero Lifestyle Banner with Logo Next to "MENU" & Search Included
+             ==================================================================== -->
+        <section class="kaldis-menu-hero-banner position-relative overflow-hidden">
+            <!-- Movable Carousel Slides -->
+            <div id="heroBannerCarousel" class="carousel slide carousel-fade position-absolute top-0 start-0 w-100 h-100" data-bs-ride="carousel" data-bs-interval="4000" data-bs-pause="false">
+                <div class="carousel-inner w-100 h-100">
+                    <?php foreach ($heroBannerImages as $idx => $imgUrl): ?>
+                        <div class="carousel-item w-100 h-100 <?= $idx === 0 ? 'active' : '' ?>">
+                            <div class="hero-carousel-slide" style="background-image: url('<?= $imgUrl ?>');"></div>
                         </div>
-                    </div>
-
-                    <div class="menu-hero-right">
-                        <?php if ($logoUrl): ?>
-                            <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" title="Return to Menu">
-                                <img src="<?= $logoUrl ?>" alt="Kaldis Logo" class="menu-header-logo-badge shadow-sm">
-                            </a>
-                        <?php else: ?>
-                            <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" title="Return to Menu" class="text-decoration-none">
-                                <div class="brand-crest" style="width: 72px; height: 72px;">
-                                    <i class="bi bi-cup-hot-fill text-gold fs-2"></i>
-                                </div>
-                            </a>
-                        <?php endif; ?>
-                    </div>
+                    <?php endforeach; ?>
                 </div>
+                <?php if (count($heroBannerImages) > 1): ?>
+                    <!-- Subtle Slide Indicator Dots -->
+                    <div class="carousel-indicators mb-1">
+                        <?php foreach ($heroBannerImages as $idx => $imgUrl): ?>
+                            <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="<?= $idx ?>" class="<?= $idx === 0 ? 'active' : '' ?>" aria-current="<?= $idx === 0 ? 'true' : 'false' ?>" aria-label="Slide <?= $idx + 1 ?>"></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
 
-                <!-- Product Search Input -->
-                <div class="menu-search-box position-relative mt-2">
-                    <i class="bi bi-search menu-search-icon"></i>
-                    <input 
-                        type="search" 
-                        id="productSearchInput" 
-                        class="form-control menu-search-input" 
-                        placeholder="Search products..."
-                        value="<?= e($search ?? '') ?>"
-                        autocomplete="off"
-                    >
-                    <button type="button" id="productSearchClear" class="btn btn-sm text-white-50 position-absolute end-0 top-50 translate-middle-y me-2" style="display: <?= !empty($search) ? 'block' : 'none' ?>;">
-                        <i class="bi bi-x-circle-fill"></i>
-                    </button>
+            <!-- Dark Overlay & Centered Content with Search Bar Included in Hero Banner -->
+            <div class="kaldis-hero-overlay d-flex flex-column align-items-center justify-content-center text-center position-relative w-100 h-100" style="z-index: 2;">
+                <div class="container d-flex flex-column align-items-center w-100" style="max-width: 820px;">
+                    <!-- Brand Logo & MENU Side by Side -->
+                    <div class="d-flex align-items-center justify-content-center gap-2 gap-sm-3 mb-1">
+                        <?php if ($logoUrl): ?>
+                            <div class="kaldis-hero-inline-logo-wrap shadow">
+                                <img src="<?= $logoUrl ?>" alt="Kaldis Logo" class="kaldis-hero-inline-logo">
+                            </div>
+                        <?php else: ?>
+                            <div class="brand-crest shadow" style="width: 52px; height: 52px;">
+                                <i class="bi bi-cup-hot-fill text-gold fs-2"></i>
+                            </div>
+                        <?php endif; ?>
+                        <h1 class="kaldis-hero-title mb-0">MENU</h1>
+                    </div>
+
+                    <!-- Active Branch Indicator Pill (Clickable to Change Branch) -->
+                    <a href="<?= base_url('menu?change_branch=1') ?>" class="kaldis-hero-branch-pill text-decoration-none mt-2 shadow-sm" title="Click to Change Branch">
+                        <i class="bi bi-geo-alt-fill text-gold me-1"></i>
+                        <span><?= e($branch['name']) ?></span>
+                        <?php if ($isCurrentAirport): ?>
+                            <span class="badge bg-gold text-dark extra-small fw-bold ms-1">USD</span>
+                        <?php elseif ($isCurrentEca): ?>
+                            <span class="badge bg-gold text-dark extra-small fw-bold ms-1">ECA</span>
+                        <?php endif; ?>
+                        <i class="bi bi-arrow-repeat ms-2 text-white-50 extra-small"></i>
+                    </a>
+
+                    <!-- Product Search Box Included Directly Inside the Image Banner -->
+                    <div class="menu-search-box position-relative w-100 mt-3" style="max-width: 620px;">
+                        <i class="bi bi-search menu-search-icon"></i>
+                        <input 
+                            type="search" 
+                            id="productSearchInput" 
+                            class="form-control menu-search-input" 
+                            placeholder="Search products..."
+                            value="<?= e($search ?? '') ?>"
+                            autocomplete="off"
+                        >
+                        <button type="button" id="productSearchClear" class="btn btn-sm text-white-50 position-absolute end-0 top-50 translate-middle-y me-2" style="display: <?= !empty($search) ? 'block' : 'none' ?>;">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
@@ -467,66 +519,65 @@ foreach ($categories as $pCat) {
                                      tabindex="0"
                                      data-product-id="<?= (int)$p['id'] ?>"
                                      data-name="<?= e($p['name']) ?>"
-                                     data-category="<?= e($p['child_category_name'] ?? $p['parent_category_name'] ?? 'Menu') ?>"
+                                     data-category="<?= e($p['parent_category_name'] ?? 'Menu') ?>"
                                      data-code="<?= e($p['article_code']) ?>"
                                      data-image="<?= (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))) ? base_url($p['image_path']) : '' ?>"
-                                     data-desc="<?= e($p['local_description'] ?? 'Freshly prepared with authentic Kaldis quality.') ?>"
+                                     data-desc="<?= e($p['local_description'] ?? '') ?>"
                                      data-price="<?= $displayPrice !== null ? ($isDollar ? '$' . number_format($displayPrice, 2) . ' ' . $priceSuffix : number_format($displayPrice, 2) . ' ' . $priceSuffix) : '' ?>"
                                      data-vat="<?= $showVatLabel ? '1' : '0' ?>"
                                      title="Tap to view <?= e($p['name']) ?>"
                                 >
-                                    <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
-                                        <div class="product-image-container">
-                                            <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
-                                        </div>
-                                    <?php endif; ?>
-                                    <div class="product-card-body">
-                                        <div class="d-flex align-items-center justify-content-between mb-1">
-                                            <div class="product-category-breadcrumb mb-0">
-                                                <?= e($p['parent_category_name'] ?? 'Menu') ?>
-                                                <?php if (!empty($p['child_category_name'])): ?>
-                                                    &middot; <?= e($p['child_category_name']) ?>
+                                    <!-- Product Name & Price at Top of Image -->
+                                    <div class="product-card-top">
+                                        <div class="d-flex align-items-start justify-content-between gap-2">
+                                            <div class="flex-grow-1 min-w-0">
+                                                <h3 class="product-title mb-0"><?= e($p['name']) ?></h3>
+                                                <?php if (!empty($p['consignee_unit'])): ?>
+                                                    <span class="badge bg-gold-subtle text-gold-dark extra-small px-2 py-0 mt-1 d-inline-block">
+                                                        <?= e($p['consignee_unit']) ?>
+                                                    </span>
                                                 <?php endif; ?>
                                             </div>
-                                            <?php if (!empty($p['consignee_unit'])): ?>
-                                                <span class="badge bg-gold-subtle text-gold-dark extra-small px-2 py-1">
-                                                    <?= e($p['consignee_unit']) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <h3 class="product-title"><?= e($p['name']) ?></h3>
-
-                                        <p class="product-description">
-                                            <?= !empty($p['local_description']) ? e($p['local_description']) : 'Freshly prepared with authentic Kaldis quality.' ?>
-                                        </p>
-
-                                        <div class="product-footer">
                                             <?php if ($showPrices && $displayPrice !== null): ?>
-                                                <div>
-                                                    <span class="product-price">
+                                                <div class="text-end flex-shrink-0 ms-2">
+                                                    <div class="product-price">
                                                         <?php if ($isDollar): ?>
                                                             <span class="text-gold me-1">$</span><?= number_format($displayPrice, 2) ?>
                                                         <?php else: ?>
                                                             <?= number_format($displayPrice, 2) ?>
                                                         <?php endif; ?>
-                                                    </span>
-                                                    <span class="product-price-currency"><?= $priceSuffix ?></span>
+                                                        <span class="product-price-currency"><?= $priceSuffix ?></span>
+                                                    </div>
                                                     <?php if ($showVatLabel): ?>
-                                                        <span class="text-muted extra-small d-block" style="font-size: 0.65rem;">incl. VAT</span>
+                                                        <span class="text-muted extra-small d-block" style="font-size: 0.65rem; line-height: 1;">incl. VAT</span>
                                                     <?php endif; ?>
                                                 </div>
                                             <?php else: ?>
-                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1 extra-small fw-semibold">
-                                                    <i class="bi bi-check-circle me-1"></i> Available
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 extra-small fw-semibold flex-shrink-0 ms-2">
+                                                    Available
                                                 </span>
                                             <?php endif; ?>
-
-                                            <span class="badge bg-light text-muted extra-small">
-                                                #<?= e($p['article_code']) ?>
-                                            </span>
                                         </div>
+
+                                        <?php if (!empty($p['local_description'])): ?>
+                                            <p class="product-description mt-2 mb-0">
+                                                <?= e($p['local_description']) ?>
+                                            </p>
+                                        <?php endif; ?>
                                     </div>
+
+                                    <!-- Product Image or Branded Crest Placeholder (When Image is Empty) -->
+                                    <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
+                                        <div class="product-image-container">
+                                            <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="product-image-container product-placeholder-container">
+                                            <div class="product-placeholder-wrap">
+                                                <img src="<?= asset_url('assets/images/kaldis-brand-crest.svg') ?>" alt="Kaldis Brand Crest" class="product-placeholder-crest-img" loading="lazy">
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         <?php endforeach; ?>
@@ -558,7 +609,7 @@ foreach ($categories as $pCat) {
                     <div id="modalProductImgWrapper" class="w-100 text-center py-3 position-relative" style="background: #2C1810;">
                         <img id="modalProductImg" src="" alt="" class="img-fluid rounded-3 shadow-sm" style="max-height: 220px; object-fit: contain; display: none;">
                         <div id="modalProductImgPlaceholder" class="py-4 text-center" style="display: none;">
-                            <i class="bi bi-cup-hot display-3 text-gold opacity-75"></i>
+                            <img src="<?= asset_url('assets/images/kaldis-brand-crest.svg') ?>" alt="Kaldis Brand Crest" style="width: 84px; height: 84px; object-fit: contain;">
                         </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-dark position-absolute top-0 end-0 m-3 rounded-circle d-flex align-items-center justify-content-center shadow" data-bs-dismiss="modal" aria-label="Close" style="width: 34px; height: 34px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.25);">
@@ -576,7 +627,6 @@ foreach ($categories as $pCat) {
                     <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
                         <div>
                             <h4 class="fw-bold text-espresso mb-1" id="modalProductName">Product Name</h4>
-                            <span class="badge bg-light text-muted border extra-small" id="modalProductCode">#0000</span>
                         </div>
                         <div class="text-end" id="modalPriceBlock">
                             <div class="fs-4 fw-bold text-espresso lh-1" id="modalProductPrice">0.00 ETB</div>
@@ -584,13 +634,11 @@ foreach ($categories as $pCat) {
                         </div>
                     </div>
 
-                    <div class="p-3 bg-light rounded-3 border my-3">
+                    <div class="p-3 bg-light rounded-3 border my-3" id="modalProductDescBox" style="display: none;">
                         <div class="extra-small text-uppercase tracking-wider fw-bold text-muted mb-1">
                             <i class="bi bi-info-circle me-1 text-gold"></i> Description
                         </div>
-                        <p class="text-dark mb-0 small lh-base" id="modalProductDesc">
-                            Freshly prepared with authentic Kaldis quality.
-                        </p>
+                        <p class="text-dark mb-0 small lh-base" id="modalProductDesc"></p>
                     </div>
 
                     <div class="d-flex align-items-center justify-content-between pt-2 border-top">
