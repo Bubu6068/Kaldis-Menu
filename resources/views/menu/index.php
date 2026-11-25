@@ -6,8 +6,11 @@
  */
 
 $logoUrl = !empty($settings['custom_logo']['value']) && file_exists(BASE_PATH . '/public/' . ltrim($settings['custom_logo']['value'], '/'))
-    ? base_url($settings['custom_logo']['value'])
+    ? asset_url($settings['custom_logo']['value'])
     : null;
+
+// Direct brand logo for empty product images (uses Brand Logo / Crest from Admin Settings)
+$placeholderLogoUrl = $logoUrl ?: asset_url('assets/images/kaldis-brand-crest.svg');
 
 // Map categories to curated food & drink photography matching Screenshot 2
 $categoryPhotos = [
@@ -566,16 +569,14 @@ foreach ($categories as $pCat) {
                                         <?php endif; ?>
                                     </div>
 
-                                    <!-- Product Image or Branded Crest Placeholder (When Image is Empty) -->
+                                    <!-- Product Image or Direct Brand Logo (When Image is Empty) -->
                                     <?php if (!empty($p['image_path']) && file_exists(BASE_PATH . '/public/' . ltrim($p['image_path'], '/'))): ?>
                                         <div class="product-image-container">
                                             <img src="<?= base_url($p['image_path']) ?>" alt="<?= e($p['name']) ?>" class="product-image" loading="lazy">
                                         </div>
                                     <?php else: ?>
-                                        <div class="product-image-container product-placeholder-container">
-                                            <div class="product-placeholder-wrap">
-                                                <img src="<?= asset_url('assets/images/kaldis-brand-crest.svg') ?>" alt="Kaldis Brand Crest" class="product-placeholder-crest-img" loading="lazy">
-                                            </div>
+                                        <div class="product-image-container">
+                                            <img src="<?= $placeholderLogoUrl ?>" alt="<?= e($p['name']) ?>" class="product-image product-image-direct-logo" loading="lazy">
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -609,7 +610,7 @@ foreach ($categories as $pCat) {
                     <div id="modalProductImgWrapper" class="w-100 text-center py-3 position-relative" style="background: #2C1810;">
                         <img id="modalProductImg" src="" alt="" class="img-fluid rounded-3 shadow-sm" style="max-height: 220px; object-fit: contain; display: none;">
                         <div id="modalProductImgPlaceholder" class="py-4 text-center" style="display: none;">
-                            <img src="<?= asset_url('assets/images/kaldis-brand-crest.svg') ?>" alt="Kaldis Brand Crest" style="width: 84px; height: 84px; object-fit: contain;">
+                            <img src="<?= $placeholderLogoUrl ?>" alt="<?= e($settings['menu_title']['value'] ?? 'Kaldis') ?>" class="product-image-direct-logo" style="max-width: 130px; max-height: 130px; object-fit: contain;">
                         </div>
                     </div>
                     <button type="button" class="btn btn-sm btn-dark position-absolute top-0 end-0 m-3 rounded-circle d-flex align-items-center justify-content-center shadow" data-bs-dismiss="modal" aria-label="Close" style="width: 34px; height: 34px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.25);">
