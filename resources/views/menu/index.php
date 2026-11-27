@@ -280,8 +280,8 @@ foreach ($categories as $pCat) {
                         <h1 class="kaldis-hero-title mb-0">MENU</h1>
                     </div>
 
-                    <!-- Active Branch Indicator Pill (Clickable to Change Branch) -->
-                    <a href="<?= base_url('menu?change_branch=1') ?>" class="kaldis-hero-branch-pill text-decoration-none mt-2 shadow-sm" title="Click to Change Branch">
+                    <!-- Active Branch Indicator Pill (Static, Non-clickable) -->
+                    <div class="kaldis-hero-branch-pill mt-2 shadow-sm">
                         <i class="bi bi-geo-alt-fill text-gold me-1"></i>
                         <span><?= e($branch['name']) ?></span>
                         <?php if ($isCurrentAirport): ?>
@@ -289,8 +289,7 @@ foreach ($categories as $pCat) {
                         <?php elseif ($isCurrentEca): ?>
                             <span class="badge bg-gold text-dark extra-small fw-bold ms-1">ECA</span>
                         <?php endif; ?>
-                        <i class="bi bi-arrow-repeat ms-2 text-white-50 extra-small"></i>
-                    </a>
+                    </div>
 
                     <!-- Product Search Box Included Directly Inside the Image Banner -->
                     <div class="menu-search-box position-relative w-100 mt-3" style="max-width: 620px;">
@@ -434,7 +433,7 @@ foreach ($categories as $pCat) {
                 <!-- Breadcrumbs & Category Bar -->
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                     <a href="<?= base_url('menu?' . urlencode($branch['name'])) ?>" class="btn btn-sm btn-outline-gold rounded-pill px-3" id="backToCategoriesBtn">
-                        <i class="bi bi-arrow-left me-1"></i> Explore Menu
+                        <i class="bi bi-arrow-left me-1"></i> Back to Menu
                     </a>
 
                     <div class="small text-muted fw-semibold">

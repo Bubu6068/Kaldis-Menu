@@ -536,14 +536,8 @@ body.kaldis-app {
     color: #fdf8ee;
     letter-spacing: 0.04em;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    transition: all 0.2s ease;
-}
-
-.kaldis-hero-branch-pill:hover {
-    background: rgba(0, 0, 0, 0.82);
-    border-color: var(--kaldis-gold);
-    color: #ffffff;
-    transform: translateY(-1px);
+    cursor: default;
+    user-select: none;
 }
 
 /* Integrated Search Bar inside Hero Image */
