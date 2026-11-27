@@ -384,18 +384,8 @@ foreach ($categories as $pCat) {
         <!-- Main Menu Body Container -->
         <div class="container py-4" style="max-width: 820px;">
             
-            <!-- Category Cards Grid ("Explore Menu") View (Child Categories) -->
+            <!-- Category Cards Grid View (Child Categories) -->
             <div id="categoryCardsSection" style="display: <?= ($currentChild === 0 && empty($search)) ? 'block' : 'none' ?>;">
-                <div class="d-flex align-items-center justify-content-between mb-3 pb-2">
-                    <div class="explore-header position-relative">
-                        <h3 class="explore-title mb-0">Explore Menu</h3>
-                        <div class="explore-gold-bar"></div>
-                    </div>
-                    <span class="explore-count">
-                        <?= count($exploreChildCategories) ?> CATEGORIES
-                    </span>
-                </div>
-
                 <!-- 2-Column Responsive Photography Child Category Grid -->
                 <div class="row g-3">
                     <?php foreach ($exploreChildCategories as $childCat): ?>
@@ -439,7 +429,6 @@ foreach ($categories as $pCat) {
                     <div class="small text-muted fw-semibold">
                         <?php if ($activeChildObj): ?>
                             Showing: <span class="text-espresso fw-bold"><?= e($activeChildObj['name']) ?></span>
-                            <span class="badge bg-light text-muted border ms-1">&rarr; <?= e($activeChildObj['parent_name']) ?></span>
                         <?php elseif (!empty($search)): ?>
                             Search results for: <span class="text-espresso fw-bold">"<?= e($search) ?>"</span>
                         <?php else: ?>
